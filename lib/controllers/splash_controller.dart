@@ -11,15 +11,19 @@ class SplashController extends GetxController {
   }
 
   Future<void> checkUser() async {
-    await Future.delayed(
-      const Duration(seconds: 2),
-    );
+    await Future.delayed(const Duration(seconds: 2));
 
     final String? email = _storage.read('email');
 
+    print('==========================');
+    print('SPLASH STORAGE EMAIL: $email');
+    print('==========================');
+
     if (email != null && email.isNotEmpty) {
+      print('USER FOUND → HOME');
       Get.offAllNamed('/home');
     } else {
+      print('USER NOT FOUND → LOGIN');
       Get.offAllNamed('/login');
     }
   }

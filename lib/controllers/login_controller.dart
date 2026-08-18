@@ -58,13 +58,14 @@ class LoginController extends GetxController {
       final email = emailController.text.trim();
       final password = passwordController.text;
 
-      final credential =  await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       final user = credential.user;
 
-       await _storage.write(
-        'email',
-        user?.email ?? '',
-      );
+      await _storage.write('email', user?.email ?? '');
+      print('Saved email: ${_storage.read('email')}');
 
       emailController.clear();
       passwordController.clear();
