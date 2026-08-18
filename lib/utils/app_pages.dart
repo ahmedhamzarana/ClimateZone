@@ -1,5 +1,6 @@
 import 'package:climatezone/bindings/emp_binding.dart';
 import 'package:climatezone/bindings/login_binding.dart';
+import 'package:climatezone/bindings/splash_binding.dart';
 import 'package:climatezone/screens/add_employee_screen.dart';
 import 'package:climatezone/screens/auth/login_screen.dart';
 import 'package:climatezone/screens/auth/splash_screen.dart';
@@ -13,7 +14,8 @@ class AppPages {
   static final List<GetPage> pages = [
     GetPage(
       name: AppRoutes.splash, 
-      page: () => const SplashScreen()
+      page: () => const SplashScreen(),
+      binding: SplashBinding()
     ),
     GetPage(
       name: AppRoutes.login, 

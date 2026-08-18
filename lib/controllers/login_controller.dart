@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 
 class LoginController extends GetxController {
   // Password visibility
@@ -14,6 +15,7 @@ class LoginController extends GetxController {
   final TextEditingController passwordController = TextEditingController();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GetStorage _storage = GetStorage();
 
   final RxString emailError = "".obs;
   final RxString passwordError = "".obs;
@@ -46,7 +48,6 @@ class LoginController extends GetxController {
   }
 
   Future<void> login() async {
-    // Validate first
     if (!validateForm()) {
       return;
     }
@@ -57,15 +58,20 @@ class LoginController extends GetxController {
       final email = emailController.text.trim();
       final password = passwordController.text;
 
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final credential =  await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final user = credential.user;
+
+       await _storage.write(
+        'email',
+        user?.email ?? '',
+      );
 
       emailController.clear();
       passwordController.clear();
 
       isLoading.value = false;
 
-      Get.offNamed('/home');
-
+      Get.offAllNamed('/home');
       Get.snackbar(
         "Login Successful",
         "Welcome back!",

@@ -1,3 +1,4 @@
+import 'package:climatezone/controllers/profile_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -6,6 +7,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ProfileController controller = Get.put(ProfileController());
     // Logout confirmation dialog helper
     void showLogoutDialog() {
       Get.dialog(
@@ -38,8 +40,7 @@ class ProfileScreen extends StatelessWidget {
             ),
             TextButton(
               onPressed: () {
-                Get.back();
-                Get.offAllNamed('/login');
+                controller.logout();
               },
               child: const Text(
                 'Logout',
