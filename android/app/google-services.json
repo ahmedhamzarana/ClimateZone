@@ -1,13 +1,14 @@
 {
   "project_info": {
-    "project_number": "348234898492",
-    "project_id": "climatezone-b63de",
-    "storage_bucket": "climatezone-b63de.firebasestorage.app"
+    "project_number": "942516248731",
+    "firebase_url": "https://smoketrace-khi-default-rtdb.firebaseio.com",
+    "project_id": "smoketrace-khi",
+    "storage_bucket": "smoketrace-khi.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:348234898492:android:b06e1e8abc29687923b739",
+        "mobilesdk_app_id": "1:942516248731:android:3f98a7b5920cc1c575663e",
         "android_client_info": {
           "package_name": "com.example.climatezone"
         }
@@ -15,7 +16,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCA5CUsbMOb8yKSQqoDO-mRhMQPqT70U2k"
+          "current_key": "AIzaSyAxqxDV8BJsfvHvQk16cefOQol1sTdkjVw"
         }
       ],
       "services": {

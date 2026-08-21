@@ -15,15 +15,11 @@ class SplashController extends GetxController {
 
     final String? email = _storage.read('email');
 
-    print('==========================');
-    print('SPLASH STORAGE EMAIL: $email');
-    print('==========================');
+
 
     if (email != null && email.isNotEmpty) {
-      print('USER FOUND → HOME');
       Get.offAllNamed('/home');
     } else {
-      print('USER NOT FOUND → LOGIN');
       Get.offAllNamed('/login');
     }
   }

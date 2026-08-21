@@ -1,4 +1,6 @@
+import 'package:climatezone/controllers/home_controller.dart';
 import 'package:climatezone/utils/sensor_card.dart';
+import 'package:climatezone/utils/sensor_history_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -8,10 +10,9 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final HomeController controller = Get.put(HomeController());
     return Scaffold(
-      backgroundColor: const Color(
-        0xFF0B0F14,
-      ),
+      backgroundColor: const Color(0xFF0B0F14),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -143,37 +144,43 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 15),
 
-            // Using your newly created external SensorCard custom utility widget
-            Row(
-              children: [
-                const Expanded(
-                  child: SensorCard(
-                    icon: Icons.thermostat,
-                    title: 'Temperature',
-                    value: '28.5°C',
-                    accentColor: Color(
-                      0xFFFF5252,
-                    ), // Styled unique color marker
+            Obx(
+              () => Row(
+                children: [
+                  Expanded(
+                    child: SensorCard(
+                      icon: Icons.thermostat,
+                      title: 'Temperature',
+                      value:
+                          '${controller.temperature.value.toStringAsFixed(1)} °C',
+                      accentColor: const Color(0xFFFF5252),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SensorCard(
-                    icon: Icons.water_drop_outlined,
-                    title: 'Humidity',
-                    value: '64%',
-                    accentColor: Colors.blueAccent.shade100,
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: SensorCard(
+                      icon: Icons.water_drop_outlined,
+                      title: 'Humidity',
+                      value: '${controller.humidity.value.toStringAsFixed(0)}%',
+                      accentColor: Colors.blueAccent.shade100,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+
             const SizedBox(height: 12),
-            const SensorCard(
-              icon: Icons.air,
-              title: 'Gas / Air Quality',
-              value: '320 ppm',
-              accentColor: Color(0xFF00D9A5),
-              fullWidth: true,
+
+            Obx(
+              () => SensorCard(
+                icon: Icons.air,
+                title: 'Gas / Air Quality',
+                value: '${controller.gasValue.value.toStringAsFixed(0)} ppm',
+                accentColor: const Color(0xFF00D9A5),
+                fullWidth: true,
+              ),
             ),
             const SizedBox(height: 25),
 
@@ -187,73 +194,8 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 15),
-            Container(
-              height: 220,
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(10, 20, 24, 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF151D25),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: LineChart(
-                LineChartData(
-                  gridData: const FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                  ),
-                  titlesData: const FlTitlesData(
-                    rightTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  lineBarsData: [
-                    // Temperature Line (Red)
-                    LineChartBarData(
-                      spots: const [
-                        FlSpot(0, 25),
-                        FlSpot(3, 27),
-                        FlSpot(6, 26.5),
-                        FlSpot(9, 28.5),
-                      ],
-                      isCurved: true,
-                      barWidth: 3.5,
-                      color: const Color(0xFFFF5252),
-                      dotData: const FlDotData(show: false),
-                    ),
-                    // Humidity Line (Blue)
-                    LineChartBarData(
-                      spots: const [
-                        FlSpot(0, 58),
-                        FlSpot(3, 62),
-                        FlSpot(6, 60),
-                        FlSpot(9, 64),
-                      ],
-                      isCurved: true,
-                      barWidth: 3.5,
-                      color: Colors.blueAccent.shade100,
-                      dotData: const FlDotData(show: false),
-                    ),
-                    // Gas Line (Green)
-                    LineChartBarData(
-                      spots: const [
-                        FlSpot(0, 30),
-                        FlSpot(3, 35),
-                        FlSpot(6, 31),
-                        FlSpot(9, 32),
-                      ],
-                      isCurved: true,
-                      barWidth: 3.5,
-                      color: const Color(0xFF00D9A5),
-                      dotData: const FlDotData(show: false),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+              const SensorHistoryChart(),
+
             const SizedBox(height: 25),
 
             // Fully Closed & Written System Status Card Component

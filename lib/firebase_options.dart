@@ -41,46 +41,53 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAX4gRe-fEJIN0z1Ydnd_4jkRxVUphmTQ4',
-    appId: '1:348234898492:web:0d14c53df5f5437123b739',
-    messagingSenderId: '348234898492',
-    projectId: 'climatezone-b63de',
-    authDomain: 'climatezone-b63de.firebaseapp.com',
-    storageBucket: 'climatezone-b63de.firebasestorage.app',
+    apiKey: 'AIzaSyAsqp6C99t5hdWy0Wehw9oyCqERD4cYiOc',
+    appId: '1:942516248731:web:a5e3bc065aeb93c175663e',
+    messagingSenderId: '942516248731',
+    projectId: 'smoketrace-khi',
+    authDomain: 'smoketrace-khi.firebaseapp.com',
+    databaseURL: 'https://smoketrace-khi-default-rtdb.firebaseio.com',
+    storageBucket: 'smoketrace-khi.firebasestorage.app',
+    measurementId: 'G-Q74EG0RM8J',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCA5CUsbMOb8yKSQqoDO-mRhMQPqT70U2k',
-    appId: '1:348234898492:android:b06e1e8abc29687923b739',
-    messagingSenderId: '348234898492',
-    projectId: 'climatezone-b63de',
-    storageBucket: 'climatezone-b63de.firebasestorage.app',
+    apiKey: 'AIzaSyAxqxDV8BJsfvHvQk16cefOQol1sTdkjVw',
+    appId: '1:942516248731:android:3f98a7b5920cc1c575663e',
+    messagingSenderId: '942516248731',
+    projectId: 'smoketrace-khi',
+    databaseURL: 'https://smoketrace-khi-default-rtdb.firebaseio.com',
+    storageBucket: 'smoketrace-khi.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBOpd-9y3obS-oVXTnpE0pFQcTeJMhfvGY',
-    appId: '1:348234898492:ios:366551df86005b1b23b739',
-    messagingSenderId: '348234898492',
-    projectId: 'climatezone-b63de',
-    storageBucket: 'climatezone-b63de.firebasestorage.app',
+    apiKey: 'AIzaSyCAsQKMnFNJioFG_-ZX6rgYGYWRfgzL9_M',
+    appId: '1:942516248731:ios:35c7810038b80f0d75663e',
+    messagingSenderId: '942516248731',
+    projectId: 'smoketrace-khi',
+    databaseURL: 'https://smoketrace-khi-default-rtdb.firebaseio.com',
+    storageBucket: 'smoketrace-khi.firebasestorage.app',
     iosBundleId: 'com.example.climatezone',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBOpd-9y3obS-oVXTnpE0pFQcTeJMhfvGY',
-    appId: '1:348234898492:ios:366551df86005b1b23b739',
-    messagingSenderId: '348234898492',
-    projectId: 'climatezone-b63de',
-    storageBucket: 'climatezone-b63de.firebasestorage.app',
+    apiKey: 'AIzaSyCAsQKMnFNJioFG_-ZX6rgYGYWRfgzL9_M',
+    appId: '1:942516248731:ios:35c7810038b80f0d75663e',
+    messagingSenderId: '942516248731',
+    projectId: 'smoketrace-khi',
+    databaseURL: 'https://smoketrace-khi-default-rtdb.firebaseio.com',
+    storageBucket: 'smoketrace-khi.firebasestorage.app',
     iosBundleId: 'com.example.climatezone',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAX4gRe-fEJIN0z1Ydnd_4jkRxVUphmTQ4',
-    appId: '1:348234898492:web:17b301a985a8b00d23b739',
-    messagingSenderId: '348234898492',
-    projectId: 'climatezone-b63de',
-    authDomain: 'climatezone-b63de.firebaseapp.com',
-    storageBucket: 'climatezone-b63de.firebasestorage.app',
+    apiKey: 'AIzaSyAsqp6C99t5hdWy0Wehw9oyCqERD4cYiOc',
+    appId: '1:942516248731:web:c952ec341238dc0275663e',
+    messagingSenderId: '942516248731',
+    projectId: 'smoketrace-khi',
+    authDomain: 'smoketrace-khi.firebaseapp.com',
+    databaseURL: 'https://smoketrace-khi-default-rtdb.firebaseio.com',
+    storageBucket: 'smoketrace-khi.firebasestorage.app',
+    measurementId: 'G-GEX9Y1FT92',
   );
 }

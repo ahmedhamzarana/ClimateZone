@@ -1,4 +1,4 @@
-import 'package:climatezone/controllers/home_controller.dart';
+import 'package:climatezone/controllers/main_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -6,7 +6,7 @@ class MainNavigationScreen extends StatelessWidget {
   MainNavigationScreen({super.key});
 
   // Inject controller
-  final HomeController controller = Get.put(HomeController());
+  final MainController controller = Get.put(MainController());
 
   @override
   Widget build(BuildContext context) {

@@ -65,7 +65,6 @@ class LoginController extends GetxController {
       final user = credential.user;
 
       await _storage.write('email', user?.email ?? '');
-      print('Saved email: ${_storage.read('email')}');
 
       emailController.clear();
       passwordController.clear();
@@ -91,8 +90,7 @@ class LoginController extends GetxController {
           break;
 
         case 'wrong-password':
-        case 'invalid-credential':
-          message = 'Incorrect email or password.';
+          message = 'Incorrect password.';
           break;
 
         case 'invalid-email':

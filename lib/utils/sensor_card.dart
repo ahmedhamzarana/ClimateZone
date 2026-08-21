@@ -12,7 +12,7 @@ class SensorCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.value,
-    this.accentColor = const Color(0xFF00D9A5), // Default theme green
+    this.accentColor = const Color(0xFF00D9A5),
     this.fullWidth = false,
   });
 
@@ -28,10 +28,24 @@ class SensorCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: accentColor, size: 28),
+          Icon(
+            icon,
+            color: accentColor,
+            size: 28,
+          ),
+
           const SizedBox(height: 12),
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 14,
+            ),
+          ),
+
           const SizedBox(height: 4),
+
           Text(
             value,
             style: const TextStyle(
