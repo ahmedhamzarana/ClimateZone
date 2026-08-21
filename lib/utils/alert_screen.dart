@@ -6,34 +6,52 @@ import '../controllers/alert_controller.dart';
 class AlertScreen extends StatelessWidget {
   AlertScreen({super.key});
 
-  final AlertController controller = Get.put(AlertController());
+  final AlertController controller =
+      Get.put(
+    AlertController(),
+  );
 
-  static const Color backgroundColor = Color(0xFF0B0F14);
-  static const Color cardColor = Color(0xFF151D25);
-  static const Color accentColor = Color(0xFF00D9A5);
-  static const Color secondaryText = Colors.grey;
+  // ============================================================
+  // COLORS
+  // ============================================================
+
+  static const Color backgroundColor =
+      Color(0xFF0B0F14);
+
+  static const Color cardColor =
+      Color(0xFF151D25);
+
+  static const Color accentColor =
+      Color(0xFF00D9A5);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor:
+          backgroundColor,
 
-      // ============================================================
+      // ========================================================
       // APP BAR
-      // ============================================================
+      // ========================================================
 
       appBar: AppBar(
-        backgroundColor: backgroundColor,
+        backgroundColor:
+            backgroundColor,
+
         elevation: 0,
 
         title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             Text(
               'Alerts',
               style: TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
                 fontSize: 22,
               ),
             ),
@@ -50,53 +68,123 @@ class AlertScreen extends StatelessWidget {
 
         actions: [
           Obx(
-            () => controller.alerts.isNotEmpty
-                ? IconButton(
-                    onPressed: () {
-                      controller.clearAlerts();
-                    },
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.white,
+            () {
+              if (controller
+                  .isLoading.value) {
+                return const Padding(
+                  padding:
+                      EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child:
+                        CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color:
+                          accentColor,
                     ),
-                  )
-                : const SizedBox(),
+                  ),
+                );
+              }
+
+              return IconButton(
+                onPressed:
+                    controller
+                        .refreshAlerts,
+                icon:
+                    const Icon(
+                  Icons.refresh,
+                  color:
+                      Colors.white,
+                ),
+              );
+            },
           ),
         ],
       ),
 
-      // ============================================================
+      // ========================================================
       // BODY
-      // ============================================================
+      // ========================================================
 
       body: Obx(
         () {
-          if (controller.alerts.isEmpty) {
+          // ERROR
+
+          if (controller
+              .errorMessage
+              .value
+              .isNotEmpty) {
+            return _errorState(
+              controller
+                  .errorMessage
+                  .value,
+            );
+          }
+
+          // LOADING
+
+          if (controller
+                  .isLoading.value &&
+              controller.alerts
+                  .isEmpty) {
+            return const Center(
+              child:
+                  CircularProgressIndicator(
+                color:
+                    accentColor,
+              ),
+            );
+          }
+
+          // EMPTY
+
+          if (controller
+              .alerts
+              .isEmpty) {
             return _emptyState();
           }
 
+          // ALERT LIST
+
           return RefreshIndicator(
-            color: accentColor,
-            backgroundColor: cardColor,
+            color:
+                accentColor,
+
+            backgroundColor:
+                cardColor,
 
             onRefresh: () async {
-              await controller.loadSupabaseAlerts();
+              await controller
+                  .refreshAlerts();
             },
 
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
+            child:
+                ListView.builder(
+              physics:
+                  const AlwaysScrollableScrollPhysics(),
 
-              padding: const EdgeInsets.fromLTRB(
+              padding:
+                  const EdgeInsets.fromLTRB(
                 18,
                 10,
                 18,
-                25,
+                30,
               ),
 
-              itemCount: controller.alerts.length,
+              itemCount:
+                  controller
+                      .alerts
+                      .length,
 
-              itemBuilder: (context, index) {
-                final alert = controller.alerts[index];
+              itemBuilder:
+                  (
+                context,
+                index,
+              ) {
+                final alert =
+                    controller
+                        .alerts[index];
 
                 return _alertCard(
                   context,
@@ -118,368 +206,290 @@ class AlertScreen extends StatelessWidget {
     BuildContext context,
     Map<String, dynamic> alert,
   ) {
+    final imageUrl =
+        alert['imageUrl']
+                ?.toString() ??
+            '';
+
     final type =
-        alert['type']?.toString() ?? 'AI ALERT';
+        alert['alert_type']
+                ?.toString() ??
+            'AI ALERT';
 
     final status =
-        alert['status']?.toString() ?? 'WARNING';
+        alert['status']
+                ?.toString() ??
+            'UNKNOWN';
 
-    final imageUrl =
-        alert['imageUrl']?.toString() ?? '';
+    final zone =
+        alert['zone']
+                ?.toString() ??
+            'N/A';
 
-    final time =
-        alert['time'] as DateTime?;
+    final confidence =
+        _confidence(
+      alert['confidence'],
+    );
+
+    final DateTime? time =
+        alert['time']
+            as DateTime?;
 
     return GestureDetector(
       onTap: () {
-        _showAlertBottomSheet(
+        _showAlertDetails(
           context,
           alert,
         );
       },
 
       child: Container(
-        margin: const EdgeInsets.only(
+        margin:
+            const EdgeInsets.only(
           bottom: 14,
         ),
 
-        decoration: BoxDecoration(
+        padding:
+            const EdgeInsets.all(14),
+
+        decoration:
+            BoxDecoration(
           color: cardColor,
 
-          borderRadius: BorderRadius.circular(
+          borderRadius:
+              BorderRadius.circular(
             20,
           ),
 
           border: Border.all(
-            color: Colors.white.withOpacity(0.04),
+            color: Colors.white
+                .withOpacity(
+              0.05,
+            ),
           ),
         ),
 
-        child: Padding(
-          padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment:
+              CrossAxisAlignment
+                  .start,
 
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // IMAGE
 
-            children: [
-              // ====================================================
-              // IMAGE
-              // ====================================================
-
-              ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  15,
-                ),
-
-                child: imageUrl.isNotEmpty
-                    ? Image.network(
-                        imageUrl,
-
-                        width: 75,
-                        height: 75,
-
-                        fit: BoxFit.cover,
-
-                        errorBuilder:
-                            (
-                          context,
-                          error,
-                          stackTrace,
-                        ) {
-                          return _imagePlaceholder();
-                        },
-                      )
-                    : _imagePlaceholder(),
+            ClipRRect(
+              borderRadius:
+                  BorderRadius.circular(
+                15,
               ),
 
-              const SizedBox(width: 14),
+              child: imageUrl
+                      .isNotEmpty
+                  ? Image.network(
+                      imageUrl,
 
-              // ====================================================
-              // CONTENT
-              // ====================================================
+                      width: 78,
+                      height: 78,
 
-              Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                      fit:
+                          BoxFit.cover,
 
-                  children: [
-                    Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      errorBuilder:
+                          (
+                        _,
+                        __,
+                        ___,
+                      ) {
+                        return _imagePlaceholder();
+                      },
+                    )
+                  : _imagePlaceholder(),
+            ),
 
-                      children: [
-                        Expanded(
-                          child: Text(
-                            alert['title']
-                                    ?.toString() ??
-                                'AI ALERT',
+            const SizedBox(
+              width: 14,
+            ),
 
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+            // CONTENT
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment
+                        .start,
+
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _title(
+                            type,
+                          ),
+
+                          maxLines: 1,
+
+                          overflow:
+                              TextOverflow
+                                  .ellipsis,
+
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors.white,
+                            fontSize: 16,
+                            fontWeight:
+                                FontWeight.bold,
                           ),
                         ),
-
-                        const SizedBox(width: 8),
-
-                        _statusBadge(status),
-                      ],
-                    ),
-
-                    const SizedBox(height: 7),
-
-                    Text(
-                      type,
-
-                      style: const TextStyle(
-                        color: accentColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
                       ),
-                    ),
 
-                    const SizedBox(height: 5),
-
-                    Text(
-                      alert['description']
-                              ?.toString() ??
-                          'Safety event detected.',
-
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 13,
-                        height: 1.3,
+                      const SizedBox(
+                        width: 7,
                       ),
+
+                      _statusBadge(
+                        status,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(
+                    height: 6,
+                  ),
+
+                  Text(
+                    type
+                        .toUpperCase(),
+
+                    style:
+                        const TextStyle(
+                      color:
+                          accentColor,
+                      fontSize: 11,
+                      fontWeight:
+                          FontWeight.bold,
                     ),
+                  ),
 
-                    const SizedBox(height: 8),
+                  const SizedBox(
+                    height: 5,
+                  ),
 
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons
+                            .location_on_outlined,
+                        color:
+                            Colors.grey,
+                        size: 13,
+                      ),
 
-                        const SizedBox(width: 4),
+                      const SizedBox(
+                        width: 3,
+                      ),
 
-                        Text(
-                          _formatDateTime(time),
+                      Expanded(
+                        child: Text(
+                          zone,
 
-                          style: const TextStyle(
-                            color: Colors.grey,
+                          maxLines: 1,
+
+                          overflow:
+                              TextOverflow
+                                  .ellipsis,
+
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors.grey,
                             fontSize: 11,
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                      ),
 
-              const SizedBox(width: 5),
+                      const SizedBox(
+                        width: 6,
+                      ),
 
-              const Padding(
-                padding: EdgeInsets.only(
-                  top: 25,
-                ),
-                child: Icon(
-                  Icons.chevron_right,
-                  color: Colors.grey,
-                  size: 22,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+                      Text(
+                        confidence,
 
-  // ============================================================
-  // IMAGE PLACEHOLDER
-  // ============================================================
-
-  Widget _imagePlaceholder() {
-    return Container(
-      width: 75,
-      height: 75,
-
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C252E),
-        borderRadius: BorderRadius.circular(15),
-      ),
-
-      child: const Icon(
-        Icons.image_outlined,
-        color: Colors.grey,
-        size: 30,
-      ),
-    );
-  }
-
-  // ============================================================
-  // STATUS BADGE
-  // ============================================================
-
-  Widget _statusBadge(String status) {
-    Color color;
-
-    switch (status.toUpperCase()) {
-      case 'CRITICAL':
-        color = Colors.redAccent;
-        break;
-
-      case 'WARNING':
-        color = Colors.orangeAccent;
-        break;
-
-      case 'NORMAL':
-        color = accentColor;
-        break;
-
-      default:
-        color = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 5,
-      ),
-
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-
-        borderRadius: BorderRadius.circular(
-          20,
-        ),
-
-        border: Border.all(
-          color: color.withOpacity(0.18),
-        ),
-      ),
-
-      child: Text(
-        status.toUpperCase(),
-
-        style: TextStyle(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // EMPTY STATE
-  // ============================================================
-
-  Widget _emptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(30),
-
-        child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
-
-          children: [
-            Container(
-              width: 95,
-              height: 95,
-
-              decoration: BoxDecoration(
-                color: accentColor.withOpacity(
-                  0.10,
-                ),
-
-                shape: BoxShape.circle,
-
-                border: Border.all(
-                  color: accentColor.withOpacity(
-                    0.15,
-                  ),
-                ),
-              ),
-
-              child: const Icon(
-                Icons.notifications_none,
-                size: 48,
-                color: accentColor,
-              ),
-            ),
-
-            const SizedBox(height: 22),
-
-            const Text(
-              'No Alerts',
-
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            const Text(
-              'No smoke, fire or safety alerts detected.',
-              textAlign: TextAlign.center,
-
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 13,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 9,
-              ),
-
-              decoration: BoxDecoration(
-                color: accentColor.withOpacity(
-                  0.08,
-                ),
-
-                borderRadius:
-                    BorderRadius.circular(20),
-              ),
-
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-
-                children: [
-                  CircleAvatar(
-                    radius: 4,
-                    backgroundColor: accentColor,
+                        style:
+                            const TextStyle(
+                          color:
+                              accentColor,
+                          fontSize: 11,
+                          fontWeight:
+                              FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
 
-                  SizedBox(width: 7),
+                  const SizedBox(
+                    height: 6,
+                  ),
 
                   Text(
-                    'System is stable',
-                    style: TextStyle(
-                      color: accentColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                    _description(
+                      type,
                     ),
+
+                    maxLines: 1,
+
+                    overflow:
+                        TextOverflow
+                            .ellipsis,
+
+                    style:
+                        const TextStyle(
+                      color:
+                          Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+
+                  const SizedBox(
+                    height: 7,
+                  ),
+
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        color:
+                            Colors.grey,
+                        size: 13,
+                      ),
+
+                      const SizedBox(
+                        width: 4,
+                      ),
+
+                      Text(
+                        _formatDateTime(
+                          time,
+                        ),
+
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.grey,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
+            ),
+
+            const Icon(
+              Icons.chevron_right,
+              color:
+                  Colors.grey,
             ),
           ],
         ),
@@ -488,275 +498,411 @@ class AlertScreen extends StatelessWidget {
   }
 
   // ============================================================
-  // BOTTOM SHEET
+  // DETAILS BOTTOM SHEET
   // ============================================================
 
-  void _showAlertBottomSheet(
+  void _showAlertDetails(
     BuildContext context,
     Map<String, dynamic> alert,
   ) {
     final imageUrl =
-        alert['imageUrl']?.toString() ?? '';
+        alert['imageUrl']
+                ?.toString() ??
+            '';
 
-    final time =
-        alert['time'] as DateTime?;
+    final type =
+        alert['alert_type']
+                ?.toString() ??
+            'AI ALERT';
+
+    final status =
+        alert['status']
+                ?.toString() ??
+            'UNKNOWN';
+
+    final zone =
+        alert['zone']
+                ?.toString() ??
+            'N/A';
+
+    final confidence =
+        _confidence(
+      alert['confidence'],
+    );
+
+    final DateTime? time =
+        alert['time']
+            as DateTime?;
 
     showModalBottomSheet(
       context: context,
 
       isScrollControlled: true,
 
-      backgroundColor: Colors.transparent,
+      backgroundColor:
+          Colors.transparent,
 
       builder: (_) {
         return Container(
           height:
-              MediaQuery.of(context).size.height *
-              0.82,
+              MediaQuery.of(context)
+                      .size
+                      .height *
+                  0.92,
 
-          decoration: const BoxDecoration(
-            color: backgroundColor,
+          decoration:
+              const BoxDecoration(
+            color:
+                backgroundColor,
 
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(28),
+            borderRadius:
+                BorderRadius.vertical(
+              top:
+                  Radius.circular(
+                28,
+              ),
             ),
           ),
 
           child: Column(
             children: [
-              // ==================================================
-              // HANDLE
-              // ==================================================
+              const SizedBox(
+                height: 10,
+              ),
 
-              const SizedBox(height: 10),
+              // HANDLE
 
               Container(
                 width: 45,
                 height: 5,
 
-                decoration: BoxDecoration(
-                  color: Color(0xFF303943),
+                decoration:
+                    BoxDecoration(
+                  color:
+                      const Color(
+                    0xFF303943,
+                  ),
 
                   borderRadius:
-                      BorderRadius.circular(10),
+                      BorderRadius.circular(
+                    10,
+                  ),
                 ),
               ),
 
-              // ==================================================
               // HEADER
-              // ==================================================
 
               Padding(
-                padding: const EdgeInsets.fromLTRB(
+                padding:
+                    const EdgeInsets.fromLTRB(
                   20,
-                  18,
-                  12,
-                  12,
+                  15,
+                  10,
+                  10,
                 ),
 
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
-                        alert['title']
-                                ?.toString() ??
-                            'Alert',
+                        _title(type),
 
-                        style: const TextStyle(
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.white,
                           fontSize: 21,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
                     ),
 
                     IconButton(
-                      onPressed: () {
-                        Get.back();
-                      },
+                      onPressed:
+                          () => Get.back(),
 
-                      icon: const Icon(
+                      icon:
+                          const Icon(
                         Icons.close,
-                        color: Colors.white,
+                        color:
+                            Colors.white,
                       ),
                     ),
                   ],
                 ),
               ),
 
-              // ==================================================
-              // CONTENT
-              // ==================================================
-
               Expanded(
-                child: SingleChildScrollView(
+                child:
+                    SingleChildScrollView(
                   physics:
                       const BouncingScrollPhysics(),
 
                   padding:
                       const EdgeInsets.fromLTRB(
                     20,
-                    0,
+                    5,
                     20,
                     30,
                   ),
 
                   child: Column(
                     crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                        CrossAxisAlignment
+                            .start,
 
                     children: [
-                      // ==========================================
                       // IMAGE
-                      // ==========================================
 
-                      if (imageUrl.isNotEmpty)
+                      if (imageUrl
+                          .isNotEmpty)
                         ClipRRect(
                           borderRadius:
-                              BorderRadius.circular(
+                              BorderRadius
+                                  .circular(
                             18,
                           ),
 
-                          child: Image.network(
+                          child:
+                              Image.network(
                             imageUrl,
 
-                            width: double.infinity,
-                            height: 220,
+                            width:
+                                double.infinity,
 
-                            fit: BoxFit.cover,
+                            height: 230,
+
+                            fit:
+                                BoxFit.cover,
 
                             errorBuilder:
                                 (
-                              context,
-                              error,
-                              stackTrace,
+                              _,
+                              __,
+                              ___,
                             ) {
-                              return _largeImagePlaceholder();
+                              return _largePlaceholder();
                             },
                           ),
-                        ),
+                        )
+                      else
+                        _largePlaceholder(),
 
-                      const SizedBox(height: 18),
+                      const SizedBox(
+                        height: 18,
+                      ),
 
-                      // ==========================================
-                      // DESCRIPTION
-                      // ==========================================
+                      // ==================================================
+                      // ALERT INFORMATION
+                      // ==================================================
 
-                      Text(
-                        alert['description']
-                                ?.toString() ??
-                            'Safety event detected.',
+                      const Text(
+                        'Alert Information',
 
-                        style: const TextStyle(
-                          fontSize: 15,
-                          color: Colors.grey,
-                          height: 1.5,
+                        style:
+                            TextStyle(
+                          color:
+                              Colors.white,
+                          fontSize: 20,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(
+                        height: 14,
+                      ),
 
                       Row(
                         children: [
-                          _statusBadge(
-                            alert['status']
-                                    ?.toString() ??
-                                'WARNING',
+                          Expanded(
+                            child:
+                                _infoCard(
+                              Icons
+                                  .warning_amber,
+                              'Type',
+                              type,
+                            ),
                           ),
 
-                          const SizedBox(width: 10),
-
-                          const Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: Colors.grey,
+                          const SizedBox(
+                            width: 10,
                           ),
 
-                          const SizedBox(width: 5),
-
-                          Text(
-                            _formatDateTime(time),
-
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
+                          Expanded(
+                            child:
+                                _infoCard(
+                              Icons
+                                  .verified,
+                              'Status',
+                              status,
                             ),
                           ),
                         ],
                       ),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(
+                        height: 10,
+                      ),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child:
+                                _infoCard(
+                              Icons
+                                  .location_on,
+                              'Zone',
+                              zone,
+                            ),
+                          ),
+
+                          const SizedBox(
+                            width: 10,
+                          ),
+
+                          Expanded(
+                            child:
+                                _infoCard(
+                              Icons
+                                  .analytics,
+                              'Confidence',
+                              confidence,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(
+                        height: 10,
+                      ),
+
+                      _infoCard(
+                        Icons.access_time,
+                        'Alert Time',
+                        _formatDateTime(
+                          time,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 28,
+                      ),
+
+                      // ==================================================
+                      // SENSOR DATA
+                      // ==================================================
 
                       const Text(
                         'Sensor Data',
 
-                        style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                        style:
+                            TextStyle(
+                          color:
+                              Colors.white,
+                          fontSize: 20,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
 
-                      const SizedBox(height: 13),
+                      const SizedBox(
+                        height: 6,
+                      ),
 
-                      // ==========================================
-                      // SENSOR GRID
-                      // ==========================================
+                      const Text(
+                        'Firebase sensor readings around the alert time',
+
+                        style:
+                            TextStyle(
+                          color:
+                              Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 15,
+                      ),
 
                       GridView.count(
-                        crossAxisCount: 2,
+                        crossAxisCount:
+                            2,
 
-                        shrinkWrap: true,
+                        shrinkWrap:
+                            true,
 
                         physics:
                             const NeverScrollableScrollPhysics(),
 
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
+                        crossAxisSpacing:
+                            12,
 
-                        childAspectRatio: 1.55,
+                        mainAxisSpacing:
+                            12,
+
+                        childAspectRatio:
+                            1.45,
 
                         children: [
                           _sensorCard(
-                            icon: Icons.thermostat,
-                            title: 'Temperature',
-                            value:
-                                '${alert['temperature']} °C',
+                            Icons
+                                .thermostat,
+                            'Temperature',
+                            _value(
+                              alert[
+                                  'temperature'],
+                              '°C',
+                            ),
                           ),
 
                           _sensorCard(
-                            icon: Icons.water_drop,
-                            title: 'Humidity',
-                            value:
-                                '${alert['humidity']} %',
+                            Icons
+                                .water_drop,
+                            'Humidity',
+                            _value(
+                              alert[
+                                  'humidity'],
+                              '%',
+                            ),
                           ),
 
                           _sensorCard(
-                            icon: Icons.air,
-                            title: 'Gas',
-                            value:
-                                '${alert['gasValue']} ppm',
+                            Icons.air,
+                            'Gas',
+                            _value(
+                              alert[
+                                  'gasValue'],
+                              'ppm',
+                            ),
                           ),
 
                           _sensorCard(
-                            icon: Icons.sensors,
-                            title: 'DHT Status',
-                            value:
-                                '${alert['dht']}',
+                            Icons.sensors,
+                            'DHT Status',
+                            _value(
+                              alert['dht'],
+                            ),
                           ),
 
                           _sensorCard(
-                            icon: Icons.memory,
-                            title: 'System',
-                            value:
-                                '${alert['systemStatus']}',
+                            Icons.memory,
+                            'System',
+                            _value(
+                              alert[
+                                  'systemStatus'],
+                            ),
                           ),
 
                           _sensorCard(
-                            icon: Icons.timer,
-                            title: 'Uptime',
-                            value:
-                                '${alert['uptime']} sec',
+                            Icons.timer,
+                            'Uptime',
+                            _value(
+                              alert[
+                                  'uptime'],
+                              'sec',
+                            ),
                           ),
                         ],
                       ),
@@ -772,64 +918,81 @@ class AlertScreen extends StatelessWidget {
   }
 
   // ============================================================
-  // SENSOR CARD
+  // INFO CARD
   // ============================================================
 
-  Widget _sensorCard({
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
+  Widget _infoCard(
+    IconData icon,
+    String title,
+    String value,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(13),
+      width: double.infinity,
 
-      decoration: BoxDecoration(
+      padding:
+          const EdgeInsets.all(14),
+
+      decoration:
+          BoxDecoration(
         color: cardColor,
 
-        borderRadius: BorderRadius.circular(16),
+        borderRadius:
+            BorderRadius.circular(
+          16,
+        ),
 
         border: Border.all(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white
+              .withOpacity(
+            0.05,
+          ),
         ),
       ),
 
       child: Column(
         crossAxisAlignment:
-            CrossAxisAlignment.start,
-
-        mainAxisAlignment:
-            MainAxisAlignment.center,
+            CrossAxisAlignment
+                .start,
 
         children: [
           Icon(
             icon,
-            size: 22,
             color: accentColor,
+            size: 22,
           ),
 
-          const SizedBox(height: 7),
+          const SizedBox(
+            height: 8,
+          ),
 
           Text(
             title,
 
-            style: const TextStyle(
+            style:
+                const TextStyle(
               color: Colors.grey,
               fontSize: 11,
             ),
           ),
 
-          const SizedBox(height: 3),
+          const SizedBox(
+            height: 4,
+          ),
 
           Text(
             value,
 
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
 
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
+            overflow:
+                TextOverflow.ellipsis,
+
+            style:
+                const TextStyle(
               color: Colors.white,
+              fontSize: 14,
+              fontWeight:
+                  FontWeight.bold,
             ),
           ),
         ],
@@ -838,47 +1001,545 @@ class AlertScreen extends StatelessWidget {
   }
 
   // ============================================================
-  // LARGE IMAGE PLACEHOLDER
+  // SENSOR CARD
   // ============================================================
 
-  Widget _largeImagePlaceholder() {
+  Widget _sensorCard(
+    IconData icon,
+    String title,
+    String value,
+  ) {
     return Container(
-      width: double.infinity,
-      height: 220,
+      padding:
+          const EdgeInsets.all(14),
 
-      decoration: BoxDecoration(
+      decoration:
+          BoxDecoration(
         color: cardColor,
 
-        borderRadius: BorderRadius.circular(18),
+        borderRadius:
+            BorderRadius.circular(
+          17,
+        ),
 
         border: Border.all(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white
+              .withOpacity(
+            0.05,
+          ),
         ),
       ),
 
-      child: const Icon(
-        Icons.image_outlined,
-        size: 60,
-        color: Colors.grey,
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment
+                .start,
+
+        mainAxisAlignment:
+            MainAxisAlignment.center,
+
+        children: [
+          Icon(
+            icon,
+            color: accentColor,
+            size: 24,
+          ),
+
+          const SizedBox(
+            height: 8,
+          ),
+
+          Text(
+            title,
+
+            style:
+                const TextStyle(
+              color: Colors.grey,
+              fontSize: 11,
+            ),
+          ),
+
+          const SizedBox(
+            height: 4,
+          ),
+
+          Text(
+            value,
+
+            maxLines: 1,
+
+            overflow:
+                TextOverflow.ellipsis,
+
+            style:
+                const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   // ============================================================
-  // DATE FORMAT
+  // VALUE
   // ============================================================
 
-  String _formatDateTime(DateTime? date) {
+  String _value(
+    dynamic value, [
+    String unit = '',
+  ]) {
+    if (value == null) {
+      return 'N/A';
+    }
+
+    final text =
+        value.toString().trim();
+
+    if (text.isEmpty ||
+        text == 'null') {
+      return 'N/A';
+    }
+
+    return '$text $unit'.trim();
+  }
+
+  // ============================================================
+  // CONFIDENCE
+  // ============================================================
+
+  String _confidence(
+    dynamic value,
+  ) {
+    if (value == null) {
+      return 'N/A';
+    }
+
+    final number =
+        double.tryParse(
+      value.toString(),
+    );
+
+    if (number == null) {
+      return value.toString();
+    }
+
+    if (number <= 1) {
+      return '${(number * 100).toStringAsFixed(1)}%';
+    }
+
+    return '${number.toStringAsFixed(1)}%';
+  }
+
+  // ============================================================
+  // TITLE
+  // ============================================================
+
+  String _title(
+    String type,
+  ) {
+    if (type.isEmpty) {
+      return 'AI Alert';
+    }
+
+    return type
+        .replaceAll(
+          '_',
+          ' ',
+        )
+        .split(' ')
+        .map(
+          (word) {
+            if (word.isEmpty) {
+              return word;
+            }
+
+            return word[0]
+                    .toUpperCase() +
+                word.substring(1)
+                    .toLowerCase();
+          },
+        )
+        .join(' ');
+  }
+
+  // ============================================================
+  // DESCRIPTION
+  // ============================================================
+
+  String _description(
+    String type,
+  ) {
+    final value =
+        type.toLowerCase();
+
+    if (value.contains('fire')) {
+      return 'Fire detected by AI monitoring system';
+    }
+
+    if (value.contains('smoke')) {
+      return 'Smoke detected by AI monitoring system';
+    }
+
+    if (value.contains('helmet')) {
+      return 'Helmet violation detected';
+    }
+
+    if (value.contains('gas')) {
+      return 'Gas level alert detected';
+    }
+
+    return 'Safety event detected';
+  }
+
+  // ============================================================
+  // STATUS BADGE
+  // ============================================================
+
+  Widget _statusBadge(
+    String status,
+  ) {
+    Color color;
+
+    switch (
+        status.toUpperCase()) {
+      case 'CRITICAL':
+        color =
+            Colors.redAccent;
+        break;
+
+      case 'WARNING':
+        color =
+            Colors.orangeAccent;
+        break;
+
+      case 'NORMAL':
+        color =
+            accentColor;
+        break;
+
+      default:
+        color =
+            Colors.grey;
+    }
+
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 5,
+      ),
+
+      decoration:
+          BoxDecoration(
+        color:
+            color.withOpacity(
+          0.12,
+        ),
+
+        borderRadius:
+            BorderRadius.circular(
+          20,
+        ),
+
+        border: Border.all(
+          color:
+              color.withOpacity(
+            0.20,
+          ),
+        ),
+      ),
+
+      child: Text(
+        status.toUpperCase(),
+
+        style: TextStyle(
+          color: color,
+          fontSize: 9,
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // IMAGE PLACEHOLDER
+  // ============================================================
+
+  Widget _imagePlaceholder() {
+    return Container(
+      width: 78,
+      height: 78,
+
+      decoration:
+          BoxDecoration(
+        color:
+            const Color(
+          0xFF1C252E,
+        ),
+
+        borderRadius:
+            BorderRadius.circular(
+          15,
+        ),
+      ),
+
+      child: const Icon(
+        Icons.image_outlined,
+        color: Colors.grey,
+        size: 30,
+      ),
+    );
+  }
+
+  // ============================================================
+  // LARGE PLACEHOLDER
+  // ============================================================
+
+  Widget _largePlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 230,
+
+      decoration:
+          BoxDecoration(
+        color: cardColor,
+
+        borderRadius:
+            BorderRadius.circular(
+          18,
+        ),
+
+        border: Border.all(
+          color: Colors.white
+              .withOpacity(
+            0.05,
+          ),
+        ),
+      ),
+
+      child: const Icon(
+        Icons.image_outlined,
+        color: Colors.grey,
+        size: 60,
+      ),
+    );
+  }
+
+  // ============================================================
+  // EMPTY STATE
+  // ============================================================
+
+  Widget _emptyState() {
+    return Center(
+      child: Padding(
+        padding:
+            const EdgeInsets.all(
+          25,
+        ),
+
+        child: Column(
+          mainAxisAlignment:
+              MainAxisAlignment.center,
+
+          children: [
+            Container(
+              width: 95,
+              height: 95,
+
+              decoration:
+                  BoxDecoration(
+                color:
+                    accentColor
+                        .withOpacity(
+                  0.10,
+                ),
+
+                shape:
+                    BoxShape.circle,
+
+                border: Border.all(
+                  color:
+                      accentColor
+                          .withOpacity(
+                    0.15,
+                  ),
+                ),
+              ),
+
+              child: const Icon(
+                Icons
+                    .notifications_none,
+                color:
+                    accentColor,
+                size: 48,
+              ),
+            ),
+
+            const SizedBox(
+              height: 20,
+            ),
+
+            const Text(
+              'No Alerts',
+
+              style:
+                  TextStyle(
+                color:
+                    Colors.white,
+                fontSize: 22,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(
+              height: 8,
+            ),
+
+            const Text(
+              'No smoke, fire or safety alerts detected.',
+
+              textAlign:
+                  TextAlign.center,
+
+              style:
+                  TextStyle(
+                color:
+                    Colors.grey,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // ERROR
+  // ============================================================
+
+  Widget _errorState(
+    String error,
+  ) {
+    return Center(
+      child: Padding(
+        padding:
+            const EdgeInsets.all(
+          25,
+        ),
+
+        child: Column(
+          mainAxisAlignment:
+              MainAxisAlignment.center,
+
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color:
+                  Colors.redAccent,
+              size: 55,
+            ),
+
+            const SizedBox(
+              height: 15,
+            ),
+
+            const Text(
+              'Unable to load alerts',
+
+              style:
+                  TextStyle(
+                color:
+                    Colors.white,
+                fontSize: 19,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(
+              height: 10,
+            ),
+
+            Text(
+              error,
+
+              textAlign:
+                  TextAlign.center,
+
+              style:
+                  const TextStyle(
+                color:
+                    Colors.grey,
+                fontSize: 12,
+              ),
+            ),
+
+            const SizedBox(
+              height: 20,
+            ),
+
+            ElevatedButton.icon(
+              onPressed:
+                  controller
+                      .refreshAlerts,
+
+              icon: const Icon(
+                Icons.refresh,
+              ),
+
+              label:
+                  const Text(
+                'Retry',
+              ),
+
+              style:
+                  ElevatedButton
+                      .styleFrom(
+                backgroundColor:
+                    accentColor,
+
+                foregroundColor:
+                    Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // DATE
+  // ============================================================
+
+  String _formatDateTime(
+    DateTime? date,
+  ) {
     if (date == null) {
       return 'Unknown time';
     }
 
-    final d = date.toLocal();
+    final d =
+        date.toLocal();
 
-    String two(int n) =>
-        n.toString().padLeft(2, '0');
+    String two(
+      int n,
+    ) =>
+        n
+            .toString()
+            .padLeft(
+              2,
+              '0',
+            );
 
-    return '${d.day}/${d.month}/${d.year} '
+    return '${two(d.day)}/${two(d.month)}/${d.year} '
         '${two(d.hour)}:${two(d.minute)}';
   }
 }

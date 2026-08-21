@@ -14,8 +14,8 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await GetStorage.init();
   await Supabase.initialize(
-    url: 'https://flazkabermqyiwjrtxtx.supabase.co',
-    publishableKey: 'sb_publishable_LXf1d2gomwqSnmDoEbg7bw_COoul7IX',
+   url: 'https://flazkabermqyiwjrtxtx.supabase.co',
+   anonKey: 'sb_publishable_LXf1d2gomwqSnmDoEbg7bw_COoul7IX',
   );
 
   runApp(const MyApp());

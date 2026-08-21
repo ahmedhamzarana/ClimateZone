@@ -1,72 +1,52 @@
 import 'dart:async';
 
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AlertController extends GetxController {
   // ============================================================
-  // FIREBASE
-  // ============================================================
-
-  final DatabaseReference currentRef = FirebaseDatabase.instance.ref(
-    'smokeSystem/current',
-  );
-
-  final DatabaseReference historyRef = FirebaseDatabase.instance.ref(
-    'smokeSystem/history',
-  );
-
-  // ============================================================
   // SUPABASE
   // ============================================================
 
-  final SupabaseClient supabase = Supabase.instance.client;
+  final SupabaseClient supabase =
+      Supabase.instance.client;
 
-  static const String bucketName = 'clearzone-alerts';
+  static const String alertsTable = 'alerts';
 
-  // ============================================================
-  // CURRENT SENSOR VALUES
-  // ============================================================
-
-  final temperature = 0.0.obs;
-  final humidity = 0.0.obs;
-  final gasValue = 0.0.obs;
-
-  final status = 'UNKNOWN'.obs;
-  final dhtStatus = 'UNKNOWN'.obs;
-  final uptime = 0.obs;
+  static const String bucketName =
+      'clearzone-alerts';
 
   // ============================================================
-  // FIREBASE HISTORY
+  // FIREBASE
   // ============================================================
 
-  final history = <Map<String, dynamic>>[].obs;
+  final DatabaseReference currentRef =
+      FirebaseDatabase.instance.ref(
+    'smokeSystem/current',
+  );
+
+  final DatabaseReference historyRef =
+      FirebaseDatabase.instance.ref(
+    'smokeSystem/history',
+  );
+
+  StreamSubscription<DatabaseEvent>?
+      currentSubscription;
 
   // ============================================================
-  // ALERTS
+  // GETX VARIABLES
   // ============================================================
 
-  final alerts = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> alerts =
+      <Map<String, dynamic>>[].obs;
 
-  final isLoading = false.obs;
+  final RxMap<String, dynamic> latestSensor =
+      <String, dynamic>{}.obs;
 
-  // ============================================================
-  // PROCESSED IMAGES
-  // ============================================================
+  final RxBool isLoading = false.obs;
 
-  final Set<String> processedImages = {};
-
-  // ============================================================
-  // SUBSCRIPTIONS / TIMER
-  // ============================================================
-
-  StreamSubscription<DatabaseEvent>? historySubscription;
-
-  StreamSubscription<DatabaseEvent>? currentSubscription;
-
-  Timer? supabaseTimer;
+  final RxString errorMessage = ''.obs;
 
   // ============================================================
   // INIT
@@ -76,621 +56,811 @@ class AlertController extends GetxController {
   void onInit() {
     super.onInit();
 
-    // Firebase current sensor data
-    listenToRealtimeData();
+    loadAlerts();
 
-    // Firebase sensor history
-    listenToHistory();
-
-    // Check Supabase every 5 seconds
-    supabaseTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      loadSupabaseAlerts();
-    });
-
-    // Initial load
-    loadSupabaseAlerts();
+    listenToCurrentSensor();
   }
 
   // ============================================================
-  // CURRENT REALTIME DATA
-  // ============================================================
-
-  void listenToRealtimeData() {
-    currentSubscription = currentRef.onValue.listen((DatabaseEvent event) {
-      try {
-        final data = event.snapshot.value;
-
-        if (data == null) {
-          return;
-        }
-
-        if (data is! Map) {
-          return;
-        }
-
-        final values = Map<String, dynamic>.from(data);
-
-        temperature.value = _toDouble(values['temperature']);
-
-        humidity.value = _toDouble(values['humidity']);
-
-        gasValue.value = _toDouble(values['gasValue']);
-
-        status.value = values['status']?.toString() ?? 'UNKNOWN';
-
-        dhtStatus.value = values['dht']?.toString() ?? 'UNKNOWN';
-
-        uptime.value = _toInt(values['uptime']);
-      } catch (e) {
-        debugPrint('Firebase current error: $e');
-      }
-    });
-  }
-
-  // ============================================================
-  // FIREBASE HISTORY
-  // ============================================================
-
-  void listenToHistory() {
-    historySubscription = historyRef
-        .orderByKey()
-        .limitToLast(100)
-        .onValue
-        .listen((DatabaseEvent event) {
-          try {
-            final data = event.snapshot.value;
-
-            if (data == null) {
-              history.clear();
-              return;
-            }
-
-            if (data is! Map) {
-              return;
-            }
-
-            final values = Map<String, dynamic>.from(data);
-
-            final List<Map<String, dynamic>> result = [];
-
-            values.forEach((key, value) {
-              if (value == null) {
-                return;
-              }
-
-              if (value is! Map) {
-                return;
-              }
-
-              final item = Map<String, dynamic>.from(value);
-
-              // ----------------------------------------------
-              // TIMESTAMP
-              // ----------------------------------------------
-
-              final timestamp = _parseTimestamp(item['timestamp']);
-
-              result.add({
-                'id': key,
-
-                'timestamp': timestamp,
-
-                'temperature': _toDouble(item['temperature']),
-
-                'humidity': _toDouble(item['humidity']),
-
-                'gasValue': _toDouble(item['gasValue']),
-
-                'status': item['status']?.toString() ?? 'UNKNOWN',
-
-                'dht': item['dht']?.toString() ?? 'UNKNOWN',
-
-                'uptime': _toInt(item['uptime']),
-              });
-            });
-
-            // ----------------------------------------------
-            // SORT BY TIMESTAMP
-            // ----------------------------------------------
-
-            result.sort((a, b) {
-              final DateTime? aTime = a['timestamp'] as DateTime?;
-
-              final DateTime? bTime = b['timestamp'] as DateTime?;
-
-              if (aTime == null && bTime == null) {
-                return 0;
-              }
-
-              if (aTime == null) {
-                return -1;
-              }
-
-              if (bTime == null) {
-                return 1;
-              }
-
-              return aTime.compareTo(bTime);
-            });
-
-            history.value = result;
-
-            debugPrint(
-              'Firebase history records: '
-              '${history.length}',
-            );
-          } catch (e) {
-            debugPrint('Firebase history error: $e');
-          }
-        });
-  }
-
-  // ============================================================
-  // LOAD SUPABASE ALERTS
-  // ============================================================
-
-  Future<void> loadSupabaseAlerts() async {
-    try {
-      final files = await supabase.storage.from(bucketName).list();
-
-      debugPrint(
-        'Supabase files found: '
-        '${files.length}',
-      );
-
-      for (final file in files) {
-        final fileName = file.name;
-
-        if (fileName.isEmpty) {
-          continue;
-        }
-
-        // ------------------------------------------------------
-        // ONLY IMAGES
-        // ------------------------------------------------------
-
-        if (!_isImage(fileName)) {
-          continue;
-        }
-
-        // ------------------------------------------------------
-        // DUPLICATE CHECK
-        // ------------------------------------------------------
-
-        if (processedImages.contains(fileName)) {
-          continue;
-        }
-
-        // ------------------------------------------------------
-        // IMAGE CREATED TIME
-        // ------------------------------------------------------
-
-        final createdAt = file.createdAt;
-
-        if (createdAt == null || createdAt.isEmpty) {
-          debugPrint(
-            'Image has no createdAt: '
-            '$fileName',
-          );
-
-          continue;
-        }
-
-        final detectionTime = DateTime.tryParse(createdAt);
-
-        if (detectionTime == null) {
-          debugPrint(
-            'Invalid createdAt: '
-            '$createdAt',
-          );
-
-          continue;
-        }
-
-        // ------------------------------------------------------
-        // IMAGE URL
-        // ------------------------------------------------------
-
-        final imageUrl = supabase.storage
-            .from(bucketName)
-            .getPublicUrl(fileName);
-
-        // ------------------------------------------------------
-        // DETECTION TYPE
-        // ------------------------------------------------------
-
-        final type = getDetectionType(fileName);
-
-        // ------------------------------------------------------
-        // FIND MATCHING HISTORY
-        // ------------------------------------------------------
-
-        final sensorData = getSensorDataForAlert(detectionTime);
-
-        // ------------------------------------------------------
-        // CREATE ALERT
-        // ------------------------------------------------------
-
-        final alert = <String, dynamic>{
-          'id': fileName,
-
-          'type': type,
-
-          'title': '$type DETECTED',
-
-          'description': getDescription(type),
-
-          'status': getAlertStatus(type),
-
-          'time': detectionTime,
-
-          'imageUrl': imageUrl,
-
-          // ----------------------------------------------
-          // SENSOR DATA FROM MATCHED HISTORY
-          // ----------------------------------------------
-          'temperature': sensorData?['temperature'] ?? temperature.value,
-
-          'humidity': sensorData?['humidity'] ?? humidity.value,
-
-          'gasValue': sensorData?['gasValue'] ?? gasValue.value,
-
-          'systemStatus': sensorData?['status'] ?? status.value,
-
-          'dht': sensorData?['dht'] ?? dhtStatus.value,
-
-          'uptime': sensorData?['uptime'] ?? uptime.value,
-
-          // Useful for debugging
-          'historyTime': sensorData?['timestamp'],
-        };
-
-        // ------------------------------------------------------
-        // ADD ALERT
-        // ------------------------------------------------------
-
-        alerts.insert(0, alert);
-
-        // ------------------------------------------------------
-        // MARK AS PROCESSED
-        // ------------------------------------------------------
-
-        processedImages.add(fileName);
-
-        // ------------------------------------------------------
-        // DEBUG
-        // ------------------------------------------------------
-
-        debugPrint('================================');
-
-        debugPrint('NEW ALERT');
-
-        debugPrint('IMAGE: $fileName');
-
-        debugPrint(
-          'IMAGE TIME: '
-          '$detectionTime',
-        );
-
-        debugPrint(
-          'HISTORY TIME: '
-          '${sensorData?['timestamp']}',
-        );
-
-        debugPrint(
-          'TEMPERATURE: '
-          '${alert['temperature']}',
-        );
-
-        debugPrint(
-          'HUMIDITY: '
-          '${alert['humidity']}',
-        );
-
-        debugPrint(
-          'GAS: '
-          '${alert['gasValue']}',
-        );
-
-        debugPrint(
-          'STATUS: '
-          '${alert['systemStatus']}',
-        );
-
-        debugPrint(
-          'DHT: '
-          '${alert['dht']}',
-        );
-
-        debugPrint(
-          'UPTIME: '
-          '${alert['uptime']}',
-        );
-
-        debugPrint(
-          'IMAGE URL: '
-          '$imageUrl',
-        );
-
-        debugPrint('================================');
-      }
-    } catch (e) {
-      debugPrint('Supabase alert error: $e');
-    }
-  }
-
-  // ============================================================
-  // FIND SENSOR DATA FOR IMAGE TIME
-  // ============================================================
-
-  Map<String, dynamic>? getSensorDataForAlert(DateTime detectionTime) {
-    if (history.isEmpty) {
-      debugPrint('Firebase history is empty.');
-
-      return null;
-    }
-
-    Map<String, dynamic>? closestRecord;
-
-    Duration? smallestDifference;
-
-    // ----------------------------------------------------------
-    // FIND NEAREST TIMESTAMP
-    // ----------------------------------------------------------
-
-    for (final record in history) {
-      final recordTime = record['timestamp'] as DateTime?;
-
-      if (recordTime == null) {
-        continue;
-      }
-
-      final difference = recordTime.difference(detectionTime).abs();
-
-      if (smallestDifference == null || difference < smallestDifference) {
-        smallestDifference = difference;
-
-        closestRecord = record;
-      }
-    }
-
-    if (closestRecord == null || smallestDifference == null) {
-      debugPrint('No matching history found.');
-
-      return null;
-    }
-
-    // ----------------------------------------------------------
-    // MAXIMUM DIFFERENCE
-    //
-    // Image and history must be within 2 minutes.
-    // ----------------------------------------------------------
-
-    const maxDifference = Duration(minutes: 2);
-
-    if (smallestDifference > maxDifference) {
-      debugPrint('History too far from image.');
-
-      debugPrint(
-        'Image time: '
-        '$detectionTime',
-      );
-
-      debugPrint(
-        'Closest history: '
-        '${closestRecord['timestamp']}',
-      );
-
-      debugPrint(
-        'Difference: '
-        '$smallestDifference',
-      );
-
-      return null;
-    }
-
-    debugPrint('MATCHED HISTORY');
-
-    debugPrint(
-      'Image time: '
-      '$detectionTime',
-    );
-
-    debugPrint(
-      'History time: '
-      '${closestRecord['timestamp']}',
-    );
-
-    debugPrint(
-      'Difference: '
-      '$smallestDifference',
-    );
-
-    return closestRecord;
-  }
-
-  // ============================================================
-  // DETECTION TYPE
-  // ============================================================
-
-  String getDetectionType(String fileName) {
-    final name = fileName.toLowerCase();
-
-    if (name.contains('fire')) {
-      return 'FIRE';
-    }
-
-    if (name.contains('smoke')) {
-      return 'SMOKE';
-    }
-
-    if (name.contains('no_helmet')) {
-      return 'NO HELMET';
-    }
-
-    if (name.contains('no-helmet')) {
-      return 'NO HELMET';
-    }
-
-    if (name.contains('helmet')) {
-      return 'HELMET';
-    }
-
-    return 'AI ALERT';
-  }
-
-  // ============================================================
-  // DESCRIPTION
-  // ============================================================
-
-  String getDescription(String type) {
-    switch (type) {
-      case 'FIRE':
-        return 'Fire detected by factory camera.';
-
-      case 'SMOKE':
-        return 'Smoke detected by factory camera.';
-
-      case 'NO HELMET':
-        return 'Worker helmet was not detected.';
-
-      case 'HELMET':
-        return 'Helmet detected by factory camera.';
-
-      default:
-        return 'Factory safety event detected.';
-    }
-  }
-
-  // ============================================================
-  // ALERT STATUS
-  // ============================================================
-
-  String getAlertStatus(String type) {
-    switch (type) {
-      case 'FIRE':
-      case 'SMOKE':
-        return 'CRITICAL';
-
-      case 'NO HELMET':
-        return 'WARNING';
-
-      case 'HELMET':
-        return 'NORMAL';
-
-      default:
-        return 'WARNING';
-    }
-  }
-
-  // ============================================================
-  // CHECK IMAGE
-  // ============================================================
-
-  bool _isImage(String fileName) {
-    final name = fileName.toLowerCase();
-
-    return name.endsWith('.jpg') ||
-        name.endsWith('.jpeg') ||
-        name.endsWith('.png') ||
-        name.endsWith('.webp') ||
-        name.endsWith('.gif');
-  }
-
-  // ============================================================
-  // PARSE TIMESTAMP
-  // ============================================================
-
-  DateTime? _parseTimestamp(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-
-    // Firebase ServerValue.timestamp
-    // normally becomes milliseconds.
-    if (value is int) {
-      return DateTime.fromMillisecondsSinceEpoch(value);
-    }
-
-    if (value is double) {
-      return DateTime.fromMillisecondsSinceEpoch(value.toInt());
-    }
-
-    final stringValue = value.toString();
-
-    // Try milliseconds
-    final milliseconds = int.tryParse(stringValue);
-
-    if (milliseconds != null) {
-      return DateTime.fromMillisecondsSinceEpoch(milliseconds);
-    }
-
-    // Try ISO date
-    return DateTime.tryParse(stringValue);
-  }
-
-  // ============================================================
-  // DOUBLE CONVERTER
-  // ============================================================
-
-  double _toDouble(dynamic value) {
-    if (value == null) {
-      return 0;
-    }
-
-    if (value is num) {
-      return value.toDouble();
-    }
-
-    return double.tryParse(value.toString()) ?? 0;
-  }
-
-  // ============================================================
-  // INT CONVERTER
-  // ============================================================
-
-  int _toInt(dynamic value) {
-    if (value == null) {
-      return 0;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    return int.tryParse(value.toString()) ?? 0;
-  }
-
-  // ============================================================
-  // REMOVE ALERT
-  // ============================================================
-
-  void removeAlert(int index) {
-    if (index >= 0 && index < alerts.length) {
-      alerts.removeAt(index);
-    }
-  }
-
-  // ============================================================
-  // CLEAR ALERTS
-  // ============================================================
-
-  void clearAlerts() {
-    alerts.clear();
-  }
-
-  // ============================================================
-  // DISPOSE
+  // CLOSE
   // ============================================================
 
   @override
   void onClose() {
     currentSubscription?.cancel();
 
-    historySubscription?.cancel();
-
-    supabaseTimer?.cancel();
-
     super.onClose();
+  }
+
+  // ============================================================
+  // LOAD ALERTS
+  // ============================================================
+
+  Future<void> loadAlerts() async {
+    try {
+      isLoading.value = true;
+
+      errorMessage.value = '';
+
+      print('');
+      print('================================');
+      print('LOADING ALERTS');
+      print('================================');
+
+      // ----------------------------------------------------------
+      // GET LATEST FIREBASE SENSOR
+      // ----------------------------------------------------------
+
+      await getLatestSensor();
+
+      // ----------------------------------------------------------
+      // GET SUPABASE ALERTS
+      // ----------------------------------------------------------
+
+      final response = await supabase
+          .from(alertsTable)
+          .select(
+            '''
+            id,
+            alert_type,
+            timestamp,
+            image_url,
+            confidence,
+            zone,
+            status
+            ''',
+          )
+          .order(
+            'timestamp',
+            ascending: false,
+          );
+
+      final List data =
+          response as List;
+
+      print(
+        'Supabase alerts found: ${data.length}',
+      );
+
+      final List<Map<String, dynamic>>
+          loadedAlerts = [];
+
+      // ----------------------------------------------------------
+      // PROCESS EVERY ALERT
+      // ----------------------------------------------------------
+
+      for (final item in data) {
+        final Map<String, dynamic> alert =
+            Map<String, dynamic>.from(item);
+
+        // --------------------------------------------------------
+        // TIME
+        // --------------------------------------------------------
+
+        final DateTime? alertTime =
+            parseDate(
+          alert['timestamp'],
+        );
+
+        alert['time'] = alertTime;
+
+        // --------------------------------------------------------
+        // ALERT TYPE
+        // --------------------------------------------------------
+
+        alert['type'] =
+            alert['alert_type']
+                    ?.toString() ??
+                'AI ALERT';
+
+        // --------------------------------------------------------
+        // TITLE
+        // --------------------------------------------------------
+
+        alert['title'] =
+            getAlertTitle(
+          alert['alert_type'],
+        );
+
+        // --------------------------------------------------------
+        // DESCRIPTION
+        // --------------------------------------------------------
+
+        alert['description'] =
+            getAlertDescription(
+          alert,
+        );
+
+        // --------------------------------------------------------
+        // IMAGE
+        // --------------------------------------------------------
+
+        alert['imageUrl'] =
+            await getImageUrl(
+          alert['image_url'],
+        );
+
+        // --------------------------------------------------------
+        // FIREBASE SENSOR DATA
+        // --------------------------------------------------------
+
+        final Map<String, dynamic>
+            sensorData =
+            await getSensorDataForAlert(
+          alertTime,
+        );
+
+        alert['temperature'] =
+            sensorData['temperature'];
+
+        alert['humidity'] =
+            sensorData['humidity'];
+
+        alert['gasValue'] =
+            sensorData['gasValue'];
+
+        alert['dht'] =
+            sensorData['dht'];
+
+        alert['systemStatus'] =
+            sensorData['systemStatus'];
+
+        alert['uptime'] =
+            sensorData['uptime'];
+
+        // --------------------------------------------------------
+        // DEBUG
+        // --------------------------------------------------------
+
+        print('');
+        print('------------------------------');
+
+        print(
+          'ID: ${alert['id']}',
+        );
+
+        print(
+          'TYPE: ${alert['alert_type']}',
+        );
+
+        print(
+          'TIME: ${alert['timestamp']}',
+        );
+
+        print(
+          'IMAGE: ${alert['image_url']}',
+        );
+
+        print(
+          'CONFIDENCE: ${alert['confidence']}',
+        );
+
+        print(
+          'ZONE: ${alert['zone']}',
+        );
+
+        print(
+          'STATUS: ${alert['status']}',
+        );
+
+        print(
+          'TEMP: ${alert['temperature']}',
+        );
+
+        print(
+          'HUMIDITY: ${alert['humidity']}',
+        );
+
+        print(
+          'GAS: ${alert['gasValue']}',
+        );
+
+        print(
+          'DHT: ${alert['dht']}',
+        );
+
+        print(
+          'SYSTEM: ${alert['systemStatus']}',
+        );
+
+        print(
+          'UPTIME: ${alert['uptime']}',
+        );
+
+        print('------------------------------');
+
+        loadedAlerts.add(alert);
+      }
+
+      // ========================================================
+      // SORT LATEST FIRST
+      // ========================================================
+
+      loadedAlerts.sort(
+        (a, b) {
+          final DateTime? aTime =
+              a['time'] as DateTime?;
+
+          final DateTime? bTime =
+              b['time'] as DateTime?;
+
+          if (aTime == null &&
+              bTime == null) {
+            return 0;
+          }
+
+          if (aTime == null) {
+            return 1;
+          }
+
+          if (bTime == null) {
+            return -1;
+          }
+
+          return bTime.compareTo(aTime);
+        },
+      );
+
+      alerts.assignAll(
+        loadedAlerts,
+      );
+
+      print('');
+      print('================================');
+      print(
+        'TOTAL ALERTS: ${alerts.length}',
+      );
+      print('================================');
+    } catch (e, stackTrace) {
+      print('');
+      print('================================');
+      print('ALERT LOAD ERROR');
+      print(e);
+      print(stackTrace);
+      print('================================');
+
+      errorMessage.value =
+          e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ============================================================
+  // REFRESH
+  // ============================================================
+
+  Future<void> refreshAlerts() async {
+    await loadAlerts();
+  }
+
+  // ============================================================
+  // FIREBASE CURRENT LISTENER
+  // ============================================================
+
+  void listenToCurrentSensor() {
+    currentSubscription =
+        currentRef.onValue.listen(
+      (event) {
+        try {
+          final value =
+              event.snapshot.value;
+
+          if (value == null) {
+            return;
+          }
+
+          if (value is Map) {
+            final Map<String, dynamic>
+                data =
+                Map<String, dynamic>.from(
+              value,
+            );
+
+            latestSensor.assignAll(
+              normalizeSensorData(
+                data,
+              ),
+            );
+
+            print('');
+            print(
+              'FIREBASE CURRENT SENSOR',
+            );
+            print(latestSensor);
+          }
+        } catch (e) {
+          print(
+            'Firebase current error: $e',
+          );
+        }
+      },
+    );
+  }
+
+  // ============================================================
+  // GET LATEST FIREBASE SENSOR
+  // ============================================================
+
+  Future<void> getLatestSensor() async {
+    try {
+      final snapshot =
+          await currentRef.get();
+
+      if (!snapshot.exists) {
+        print(
+          'Firebase current sensor not found',
+        );
+
+        return;
+      }
+
+      final value =
+          snapshot.value;
+
+      if (value is Map) {
+        final Map<String, dynamic>
+            data =
+            Map<String, dynamic>.from(
+          value,
+        );
+
+        latestSensor.assignAll(
+          normalizeSensorData(
+            data,
+          ),
+        );
+
+        print('');
+        print(
+          'LATEST FIREBASE SENSOR',
+        );
+
+        print(
+          latestSensor,
+        );
+      }
+    } catch (e) {
+      print(
+        'Latest sensor error: $e',
+      );
+    }
+  }
+
+  // ============================================================
+  // SENSOR DATA FOR ALERT
+  // ============================================================
+
+  Future<Map<String, dynamic>>
+      getSensorDataForAlert(
+    DateTime? alertTime,
+  ) async {
+    try {
+      // ----------------------------------------------------------
+      // GET HISTORY
+      // ----------------------------------------------------------
+
+      final snapshot =
+          await historyRef.get();
+
+      if (snapshot.exists) {
+        final value =
+            snapshot.value;
+
+        final List<
+                Map<String, dynamic>>
+            history = [];
+
+        // --------------------------------------------------------
+        // HISTORY IS MAP
+        // --------------------------------------------------------
+
+        if (value is Map) {
+          value.forEach(
+            (key, item) {
+              if (item is Map) {
+                final Map<String, dynamic>
+                    data =
+                    Map<String, dynamic>.from(
+                  item,
+                );
+
+                history.add(
+                  normalizeSensorData(
+                    data,
+                  ),
+                );
+              }
+            },
+          );
+        }
+
+        // --------------------------------------------------------
+        // HISTORY IS LIST
+        // --------------------------------------------------------
+
+        if (value is List) {
+          for (final item in value) {
+            if (item is Map) {
+              final Map<String, dynamic>
+                  data =
+                  Map<String, dynamic>.from(
+                item,
+              );
+
+              history.add(
+                normalizeSensorData(
+                  data,
+                ),
+              );
+            }
+          }
+        }
+
+        print(
+          'Firebase history records: '
+          '${history.length}',
+        );
+
+        // --------------------------------------------------------
+        // FIND CLOSEST READING
+        // --------------------------------------------------------
+
+        if (history.isNotEmpty) {
+          final nearest =
+              findNearestSensor(
+            history,
+            alertTime,
+          );
+
+          if (nearest != null) {
+            return nearest;
+          }
+        }
+      }
+
+      // ----------------------------------------------------------
+      // FALLBACK CURRENT SENSOR
+      // ----------------------------------------------------------
+
+      if (latestSensor.isNotEmpty) {
+        return Map<String, dynamic>.from(
+          latestSensor,
+        );
+      }
+    } catch (e) {
+      print(
+        'Firebase history error: $e',
+      );
+    }
+
+    // ----------------------------------------------------------
+    // NO DATA
+    // ----------------------------------------------------------
+
+    return {
+      'temperature': null,
+      'humidity': null,
+      'gasValue': null,
+      'dht': null,
+      'systemStatus': null,
+      'uptime': null,
+      'timestamp': null,
+    };
+  }
+
+  // ============================================================
+  // FIND NEAREST SENSOR
+  // ============================================================
+
+  Map<String, dynamic>?
+      findNearestSensor(
+    List<Map<String, dynamic>>
+        history,
+    DateTime? alertTime,
+  ) {
+    if (history.isEmpty) {
+      return null;
+    }
+
+    if (alertTime == null) {
+      return history.last;
+    }
+
+    Map<String, dynamic>?
+        nearest;
+
+    Duration?
+        smallestDifference;
+
+    for (final item in history) {
+      final DateTime? sensorTime =
+          parseDate(
+        item['timestamp'],
+      );
+
+      if (sensorTime == null) {
+        continue;
+      }
+
+      final difference =
+          sensorTime
+              .difference(alertTime)
+              .abs();
+
+      if (smallestDifference ==
+              null ||
+          difference <
+              smallestDifference) {
+        smallestDifference =
+            difference;
+
+        nearest = item;
+      }
+    }
+
+    return nearest ??
+        history.last;
+  }
+
+  // ============================================================
+  // NORMALIZE FIREBASE
+  // ============================================================
+
+  Map<String, dynamic>
+      normalizeSensorData(
+    Map<String, dynamic> data,
+  ) {
+    return {
+      'temperature': firstValue(
+        data,
+        [
+          'temperature',
+          'temp',
+          'Temperature',
+          'Temperature_C',
+        ],
+      ),
+
+      'humidity': firstValue(
+        data,
+        [
+          'humidity',
+          'Humidity',
+          'hum',
+        ],
+      ),
+
+      'gasValue': firstValue(
+        data,
+        [
+          'gasValue',
+          'gas',
+          'gas_value',
+          'Gas',
+          'mq2',
+          'mq135',
+        ],
+      ),
+
+      'dht': firstValue(
+        data,
+        [
+          'dht',
+          'dhtStatus',
+          'DHT',
+          'dht_status',
+        ],
+      ),
+
+      'systemStatus': firstValue(
+        data,
+        [
+          'systemStatus',
+          'system_status',
+          'status',
+          'System',
+        ],
+      ),
+
+      'uptime': firstValue(
+        data,
+        [
+          'uptime',
+          'Uptime',
+        ],
+      ),
+
+      'timestamp': firstValue(
+        data,
+        [
+          'timestamp',
+          'time',
+          'created_at',
+        ],
+      ),
+    };
+  }
+
+  // ============================================================
+  // FIRST VALUE
+  // ============================================================
+
+  dynamic firstValue(
+    Map<String, dynamic> data,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      if (!data.containsKey(key)) {
+        continue;
+      }
+
+      final value = data[key];
+
+      if (value != null &&
+          value
+              .toString()
+              .trim()
+              .isNotEmpty) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  // ============================================================
+  // IMAGE URL
+  // ============================================================
+
+  Future<String> getImageUrl(
+    dynamic imageValue,
+  ) async {
+    if (imageValue == null) {
+      return '';
+    }
+
+    final path =
+        imageValue
+            .toString()
+            .trim();
+
+    if (path.isEmpty) {
+      return '';
+    }
+
+    // Already full URL
+    if (path.startsWith(
+      'http://',
+    ) ||
+        path.startsWith(
+          'https://',
+        )) {
+      return path;
+    }
+
+    try {
+      final url =
+          supabase.storage
+              .from(bucketName)
+              .getPublicUrl(
+                path,
+              );
+
+      return url;
+    } catch (e) {
+      print(
+        'Image URL error: $e',
+      );
+
+      return '';
+    }
+  }
+
+  // ============================================================
+  // ALERT TITLE
+  // ============================================================
+
+  String getAlertTitle(
+    dynamic type,
+  ) {
+    final value =
+        type?.toString() ?? '';
+
+    if (value.isEmpty) {
+      return 'AI Alert';
+    }
+
+    switch (value.toLowerCase()) {
+      case 'fire':
+      case 'fire detected':
+        return 'Fire Detected';
+
+      case 'smoke':
+      case 'smoke detected':
+        return 'Smoke Detected';
+
+      case 'helmet':
+      case 'helmet violation':
+        return 'Helmet Violation';
+
+      case 'gas':
+      case 'gas alert':
+        return 'Gas Alert';
+
+      default:
+        return value
+            .replaceAll(
+              '_',
+              ' ',
+            )
+            .toUpperCase();
+    }
+  }
+
+  // ============================================================
+  // ALERT DESCRIPTION
+  // ============================================================
+
+  String getAlertDescription(
+    Map<String, dynamic> alert,
+  ) {
+    final type =
+        alert['alert_type']
+                ?.toString()
+                .toLowerCase() ??
+            '';
+
+    if (type.contains('fire')) {
+      return 'Fire detected by the AI monitoring system.';
+    }
+
+    if (type.contains('smoke')) {
+      return 'Smoke detected by the AI monitoring system.';
+    }
+
+    if (type.contains('helmet')) {
+      return 'Helmet safety violation detected.';
+    }
+
+    if (type.contains('gas')) {
+      return 'Abnormal gas level detected.';
+    }
+
+    return 'Safety event detected by the monitoring system.';
+  }
+
+  // ============================================================
+  // DATE PARSER
+  // ============================================================
+
+  DateTime? parseDate(
+    dynamic value,
+  ) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is DateTime) {
+      return value;
+    }
+
+    if (value is int) {
+      return DateTime
+          .fromMillisecondsSinceEpoch(
+        value,
+      );
+    }
+
+    final text =
+        value.toString().trim();
+
+    if (text.isEmpty) {
+      return null;
+    }
+
+    return DateTime.tryParse(
+      text,
+    );
   }
 }
