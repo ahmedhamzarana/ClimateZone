@@ -1,13 +1,12 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class HomeController extends GetxController {
-  final DatabaseReference currentRef =
-      FirebaseDatabase.instance.ref('smokeSystem/current');
+class AlertController extends GetxController{
 
-  final DatabaseReference historyRef =
-      FirebaseDatabase.instance.ref('smokeSystem/history');
-  final esp32  = ''.obs;
+final DatabaseReference currentRef = FirebaseDatabase.instance.ref('smokeSystem/current');
+final DatabaseReference historyRef = FirebaseDatabase.instance.ref('smokeSystem/history');
+final SupabaseClient supabase = Supabase.instance.client;
 
   // Current values
   final temperature = 0.0.obs;
@@ -35,7 +34,6 @@ class HomeController extends GetxController {
   void listenToRealtimeData() {
     currentRef.onValue.listen((DatabaseEvent event) {
       final data = event.snapshot.value;
-
       if (data == null) return;
       final values = Map<String, dynamic>.from(data as Map);
       temperature.value = double.tryParse(values['temperature'].toString()) ?? 0;
@@ -65,11 +63,11 @@ class HomeController extends GetxController {
         final item = Map<String, dynamic>.from(value as Map);
         result.add({
           'id': key,
-          'temperature': double.tryParse(item['temperature'].toString()) ?? 0,
-          'humidity': double.tryParse(item['humidity'].toString()) ?? 0,
-          'gasValue': double.tryParse(item['gasValue'].toString()) ?? 0,
-          'status': item['status']?.toString() ?? 'UNKNOWN',
-          'dht': item['dht']?.toString() ?? 'UNKNOWN',
+          'temperature':double.tryParse(item['temperature'].toString()) ?? 0,
+          'humidity':double.tryParse(item['humidity'].toString()) ?? 0,
+          'gasValue':double.tryParse(item['gasValue'].toString()) ?? 0,
+          'status':item['status']?.toString() ?? 'UNKNOWN',
+          'dht':item['dht']?.toString() ?? 'UNKNOWN',
           'uptime': int.tryParse(item['uptime'].toString()) ?? 0,
         });
       });
@@ -77,4 +75,5 @@ class HomeController extends GetxController {
       history.value = result;
     });
   }
+
 }
