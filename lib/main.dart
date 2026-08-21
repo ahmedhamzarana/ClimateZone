@@ -1,6 +1,6 @@
 import 'package:climatezone/firebase_options.dart';
-import 'package:climatezone/utils/app_pages.dart';
-import 'package:climatezone/utils/app_routes.dart';
+import 'package:climatezone/routes/app_pages.dart';
+import 'package:climatezone/routes/app_routes.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -11,9 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await GetStorage.init();
   await Supabase.initialize(
     url: 'https://flazkabermqyiwjrtxtx.supabase.co',
@@ -22,7 +20,6 @@ Future<void> main() async {
 
   runApp(const MyApp());
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

@@ -13,11 +13,5 @@ class MainController extends GetxController {
     currentIndex.value = index;
   }
 
-  final List<Widget> screens = [
-    HomeScreen(),
-    ChatBotScreen(),
-    ProfileScreen(),
-  ];
-
-
+  final List<Widget> screens = [HomeScreen(), ChatBotScreen(), ProfileScreen()];
 }

@@ -1,4 +1,4 @@
-import 'package:climatezone/controllers/login_controller.dart';
+import 'package:climatezone/controllers/auth/login_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 

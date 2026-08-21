@@ -15,8 +15,6 @@ class SplashController extends GetxController {
 
     final String? email = _storage.read('email');
 
-
-
     if (email != null && email.isNotEmpty) {
       Get.offAllNamed('/home');
     } else {

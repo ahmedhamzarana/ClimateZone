@@ -1,4 +1,4 @@
-import 'package:climatezone/controllers/login_controller.dart';
+import 'package:climatezone/controllers/auth/login_controller.dart';
 import 'package:get/get.dart';
 
 class LoginBinding extends Bindings {

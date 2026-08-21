@@ -1,4 +1,5 @@
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -8,11 +9,13 @@ class ChatController extends GetxController {
   // FIREBASE REFERENCES
   // ============================================================
 
-  final DatabaseReference currentRef =
-      FirebaseDatabase.instance.ref('smokeSystem/current');
+  final DatabaseReference currentRef = FirebaseDatabase.instance.ref(
+    'smokeSystem/current',
+  );
 
-  final DatabaseReference historyRef =
-      FirebaseDatabase.instance.ref('smokeSystem/history');
+  final DatabaseReference historyRef = FirebaseDatabase.instance.ref(
+    'smokeSystem/history',
+  );
 
   // ============================================================
   // GEMINI
@@ -70,15 +73,10 @@ class ChatController extends GetxController {
     final apiKey = dotenv.env['GEMINI_API_KEY'];
 
     if (apiKey == null || apiKey.trim().isEmpty) {
-      throw Exception(
-        'GEMINI_API_KEY is missing from .env',
-      );
+      throw Exception('GEMINI_API_KEY is missing from .env');
     }
 
-    geminiModel = GenerativeModel(
-      model: 'gemini-3.6-flash',
-      apiKey: apiKey,
-    );
+    geminiModel = GenerativeModel(model: 'gemini-3.6-flash', apiKey: apiKey);
   }
 
   // ============================================================
@@ -95,46 +93,26 @@ class ChatController extends GetxController {
 
           if (data is! Map) return;
 
-          final values =
-              Map<String, dynamic>.from(data);
+          final values = Map<String, dynamic>.from(data);
 
           temperature.value =
-              double.tryParse(
-                    values['temperature'].toString(),
-                  ) ??
-                  0;
+              double.tryParse(values['temperature'].toString()) ?? 0;
 
-          humidity.value =
-              double.tryParse(
-                    values['humidity'].toString(),
-                  ) ??
-                  0;
+          humidity.value = double.tryParse(values['humidity'].toString()) ?? 0;
 
-          gasValue.value =
-              double.tryParse(
-                    values['gasValue'].toString(),
-                  ) ??
-                  0;
+          gasValue.value = double.tryParse(values['gasValue'].toString()) ?? 0;
 
-          status.value =
-              values['status']?.toString() ??
-              'UNKNOWN';
+          status.value = values['status']?.toString() ?? 'UNKNOWN';
 
-          dhtStatus.value =
-              values['dht']?.toString() ??
-              'UNKNOWN';
+          dhtStatus.value = values['dht']?.toString() ?? 'UNKNOWN';
 
-          uptime.value =
-              int.tryParse(
-                    values['uptime'].toString(),
-                  ) ??
-                  0;
+          uptime.value = int.tryParse(values['uptime'].toString()) ?? 0;
         } catch (e) {
-          print('Realtime data error: $e');
+          debugPrint('Realtime data error: $e');
         }
       },
       onError: (error) {
-        print('Firebase realtime error: $error');
+        debugPrint('Firebase realtime error: $error');
       },
     );
   }
@@ -149,72 +127,49 @@ class ChatController extends GetxController {
         .limitToLast(24)
         .onValue
         .listen(
-      (DatabaseEvent event) {
-        try {
-          final data = event.snapshot.value;
+          (DatabaseEvent event) {
+            try {
+              final data = event.snapshot.value;
 
-          if (data == null) {
-            history.clear();
-            return;
-          }
+              if (data == null) {
+                history.clear();
+                return;
+              }
 
-          if (data is! Map) return;
+              if (data is! Map) return;
 
-          final values =
-              Map<String, dynamic>.from(data);
+              final values = Map<String, dynamic>.from(data);
 
-          final List<Map<String, dynamic>> result =
-              [];
+              final List<Map<String, dynamic>> result = [];
 
-          values.forEach((key, value) {
-            if (value == null) return;
+              values.forEach((key, value) {
+                if (value == null) return;
 
-            if (value is! Map) return;
+                if (value is! Map) return;
 
-            final item =
-                Map<String, dynamic>.from(value);
+                final item = Map<String, dynamic>.from(value);
 
-            result.add({
-              'id': key,
-              'temperature':
-                  double.tryParse(
-                        item['temperature']
-                            .toString(),
-                      ) ??
-                      0,
-              'humidity':
-                  double.tryParse(
-                        item['humidity'].toString(),
-                      ) ??
-                      0,
-              'gasValue':
-                  double.tryParse(
-                        item['gasValue'].toString(),
-                      ) ??
-                      0,
-              'status':
-                  item['status']?.toString() ??
-                  'UNKNOWN',
-              'dht':
-                  item['dht']?.toString() ??
-                  'UNKNOWN',
-              'uptime':
-                  int.tryParse(
-                        item['uptime'].toString(),
-                      ) ??
-                      0,
-            });
-          });
+                result.add({
+                  'id': key,
+                  'temperature':
+                      double.tryParse(item['temperature'].toString()) ?? 0,
+                  'humidity': double.tryParse(item['humidity'].toString()) ?? 0,
+                  'gasValue': double.tryParse(item['gasValue'].toString()) ?? 0,
+                  'status': item['status']?.toString() ?? 'UNKNOWN',
+                  'dht': item['dht']?.toString() ?? 'UNKNOWN',
+                  'uptime': int.tryParse(item['uptime'].toString()) ?? 0,
+                });
+              });
 
-          history.value = result;
-        } catch (e) {
-          print('History data error: $e');
-        }
-      },
-      onError: (error) {
-        print('Firebase history error: $error');
-      },
-    );
+              history.value = result;
+            } catch (e) {
+              debugPrint('History data error: $e');
+            }
+          },
+          onError: (error) {
+            debugPrint('Firebase history error: $error');
+          },
+        );
   }
 
   // ============================================================
@@ -226,8 +181,9 @@ class ChatController extends GetxController {
 
     final historyText = recentHistory.isEmpty
         ? 'No historical records available.'
-        : recentHistory.map((item) {
-            return '''
+        : recentHistory
+              .map((item) {
+                return '''
 Temperature: ${item['temperature']} °C
 Humidity: ${item['humidity']} %
 Gas: ${item['gasValue']} ppm
@@ -235,7 +191,8 @@ Status: ${item['status']}
 DHT: ${item['dht']}
 Uptime: ${item['uptime']} seconds
 ''';
-          }).join('\n');
+              })
+              .join('\n');
 
     return '''
 CURRENT SMARTSENSE SENSOR DATA
@@ -263,62 +220,44 @@ $historyText
       return;
     }
 
-    messages.add({
-      'isBot': false,
-      'message': text,
-    });
+    messages.add({'isBot': false, 'message': text});
 
     isLoading.value = true;
 
-    messages.add({
-      'isBot': true,
-      'message': 'Thinking...',
-      'loading': true,
-    });
+    messages.add({'isBot': true, 'message': 'Thinking...', 'loading': true});
 
     try {
       final answer = await generateAnswer(text);
 
-      if (messages.isNotEmpty &&
-          messages.last['loading'] == true) {
+      if (messages.isNotEmpty && messages.last['loading'] == true) {
         messages.removeLast();
       }
 
-      messages.add({
-        'isBot': true,
-        'message': answer,
-      });
+      messages.add({'isBot': true, 'message': answer});
     } catch (e, stackTrace) {
-  print('================ GEMINI ERROR ================');
-  print(e);
-  print(stackTrace);
-  print('==============================================');
+      debugPrint('================ GEMINI ERROR ================');
+      debugPrint(e.toString());
+      debugPrint(stackTrace.toString());
+      debugPrint('==============================================');
+      if (messages.isNotEmpty && messages.last['loading'] == true) {
+        messages.removeLast();
+      }
 
-  if (messages.isNotEmpty &&
-      messages.last['loading'] == true) {
-    messages.removeLast();
-  }
-
-  messages.add({
-    'isBot': true,
-    'message': 'Gemini Error: $e',
-  });
-} finally {
-  isLoading.value = false;
-}
+      messages.add({'isBot': true, 'message': 'Gemini Error: $e'});
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   // ============================================================
   // GEMINI
   // ============================================================
 
-  Future<String> generateAnswer(
-    String question,
-  ) async {
-    final sensorContext =
-        buildSensorContext();
+  Future<String> generateAnswer(String question) async {
+    final sensorContext = buildSensorContext();
 
-    final prompt = '''
+    final prompt =
+        '''
 You are SmartSense AI, an environmental monitoring assistant for an ESP32-based monitoring system.
 
 $sensorContext
@@ -340,13 +279,9 @@ USER QUESTION:
 $question
 ''';
 
-    final response =
-        await geminiModel.generateContent([
-      Content.text(prompt),
-    ]);
+    final response = await geminiModel.generateContent([Content.text(prompt)]);
 
-    return response.text?.trim() ??
-        'Gemini did not return a response.';
+    return response.text?.trim() ?? 'Gemini did not return a response.';
   }
 
   // ============================================================
@@ -358,8 +293,7 @@ $question
 
     messages.add({
       'isBot': true,
-      'message':
-          'Hello! I am SmartSense AI. How can I help you?',
+      'message': 'Hello! I am SmartSense AI. How can I help you?',
     });
   }
 

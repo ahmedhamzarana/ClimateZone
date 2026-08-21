@@ -193,7 +193,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 15),
-              const SensorHistoryChart(),
+            const SensorHistoryChart(),
 
             const SizedBox(height: 25),
 

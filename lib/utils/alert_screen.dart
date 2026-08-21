@@ -1,211 +1,484 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../controllers/alert_controller.dart';
+
 class AlertScreen extends StatelessWidget {
-  const AlertScreen({super.key});
+  AlertScreen({super.key});
+
+  final AlertController controller = Get.put(AlertController());
+
+  static const Color backgroundColor = Color(0xFF0B0F14);
+  static const Color cardColor = Color(0xFF151D25);
+  static const Color accentColor = Color(0xFF00D9A5);
+  static const Color secondaryText = Colors.grey;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F14),
+      backgroundColor: backgroundColor,
+
+      // ============================================================
+      // APP BAR
+      // ============================================================
 
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: backgroundColor,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios,
-            color: Colors.white,
-          ),
-          onPressed: () => Get.back(),
+
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Alerts',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+              ),
+            ),
+
+            Text(
+              'Safety events & notifications',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 11,
+              ),
+            ),
+          ],
         ),
-        title: const Text(
-          'Alerts',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-      ),
 
-      body: ListView(
-        padding: const EdgeInsets.all(18),
-        children: [
-          alertCard(
-            title: 'Critical Humidity Drop',
-            description:
-                'Humidity has dropped below the safe level.',
-            status: 'CRITICAL',
-            time: 'Just now',
-            color: Colors.redAccent,
-            icon: Icons.water_drop_outlined,
-
-            temperature: '29.4 °C',
-            humidity: '24 %',
-            gas: '312 ppm',
-            systemStatus: 'WARNING',
-
-            imageUrl:
-                'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?auto=format&fit=crop&w=1000&q=80',
-          ),
-
-          const SizedBox(height: 16),
-
-          alertCard(
-            title: 'Bad Weather Warning',
-            description:
-                'Atmospheric conditions indicate possible heavy rain.',
-            status: 'WARNING',
-            time: '12 mins ago',
-            color: Colors.amber,
-            icon: Icons.thunderstorm_outlined,
-
-            temperature: '30.1 °C',
-            humidity: '68 %',
-            gas: '330 ppm',
-            systemStatus: 'WARNING',
-
-            imageUrl:
-                'https://images.unsplash.com/photo-1605727216801-e27ce1d0cc28?auto=format&fit=crop&w=1000&q=80',
-          ),
-
-          const SizedBox(height: 16),
-
-          alertCard(
-            title: 'Air Quality Restored',
-            description:
-                'Gas and smoke levels returned to normal.',
-            status: 'RESOLVED',
-            time: '1 hour ago',
-            color: const Color(0xFF00D9A5),
-            icon: Icons.check_circle_outline,
-
-            temperature: '28.7 °C',
-            humidity: '55 %',
-            gas: '318 ppm',
-            systemStatus: 'NORMAL',
-
-            imageUrl:
-                'https://images.unsplash.com/photo-1516939884455-1445c8652f83?auto=format&fit=crop&w=1000&q=80',
+        actions: [
+          Obx(
+            () => controller.alerts.isNotEmpty
+                ? IconButton(
+                    onPressed: () {
+                      controller.clearAlerts();
+                    },
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.white,
+                    ),
+                  )
+                : const SizedBox(),
           ),
         ],
+      ),
+
+      // ============================================================
+      // BODY
+      // ============================================================
+
+      body: Obx(
+        () {
+          if (controller.alerts.isEmpty) {
+            return _emptyState();
+          }
+
+          return RefreshIndicator(
+            color: accentColor,
+            backgroundColor: cardColor,
+
+            onRefresh: () async {
+              await controller.loadSupabaseAlerts();
+            },
+
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+
+              padding: const EdgeInsets.fromLTRB(
+                18,
+                10,
+                18,
+                25,
+              ),
+
+              itemCount: controller.alerts.length,
+
+              itemBuilder: (context, index) {
+                final alert = controller.alerts[index];
+
+                return _alertCard(
+                  context,
+                  alert,
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget alertCard({
-    required String title,
-    required String description,
-    required String status,
-    required String time,
-    required Color color,
-    required IconData icon,
-    required String temperature,
-    required String humidity,
-    required String gas,
-    required String systemStatus,
-    required String imageUrl,
-  }) {
+  // ============================================================
+  // ALERT CARD
+  // ============================================================
+
+  Widget _alertCard(
+    BuildContext context,
+    Map<String, dynamic> alert,
+  ) {
+    final type =
+        alert['type']?.toString() ?? 'AI ALERT';
+
+    final status =
+        alert['status']?.toString() ?? 'WARNING';
+
+    final imageUrl =
+        alert['imageUrl']?.toString() ?? '';
+
+    final time =
+        alert['time'] as DateTime?;
+
     return GestureDetector(
       onTap: () {
-        showAlertBottomSheet(
-          title: title,
-          description: description,
-          status: status,
-          time: time,
-          color: color,
-          icon: icon,
-          temperature: temperature,
-          humidity: humidity,
-          gas: gas,
-          systemStatus: systemStatus,
-          imageUrl: imageUrl,
+        _showAlertBottomSheet(
+          context,
+          alert,
         );
       },
 
       child: Container(
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(
+          bottom: 14,
+        ),
+
         decoration: BoxDecoration(
-          color: const Color(0xFF151D25),
-          borderRadius: BorderRadius.circular(20),
+          color: cardColor,
+
+          borderRadius: BorderRadius.circular(
+            20,
+          ),
+
           border: Border.all(
-            color: color.withOpacity(.2),
+            color: Colors.white.withOpacity(0.04),
           ),
         ),
 
-        child: Row(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+
+            children: [
+              // ====================================================
+              // IMAGE
+              // ====================================================
+
+              ClipRRect(
+                borderRadius: BorderRadius.circular(
+                  15,
+                ),
+
+                child: imageUrl.isNotEmpty
+                    ? Image.network(
+                        imageUrl,
+
+                        width: 75,
+                        height: 75,
+
+                        fit: BoxFit.cover,
+
+                        errorBuilder:
+                            (
+                          context,
+                          error,
+                          stackTrace,
+                        ) {
+                          return _imagePlaceholder();
+                        },
+                      )
+                    : _imagePlaceholder(),
+              ),
+
+              const SizedBox(width: 14),
+
+              // ====================================================
+              // CONTENT
+              // ====================================================
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+
+                  children: [
+                    Row(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+
+                      children: [
+                        Expanded(
+                          child: Text(
+                            alert['title']
+                                    ?.toString() ??
+                                'AI ALERT',
+
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        _statusBadge(status),
+                      ],
+                    ),
+
+                    const SizedBox(height: 7),
+
+                    Text(
+                      type,
+
+                      style: const TextStyle(
+                        color: accentColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+
+                    const SizedBox(height: 5),
+
+                    Text(
+                      alert['description']
+                              ?.toString() ??
+                          'Safety event detected.',
+
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 13,
+                        height: 1.3,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        Text(
+                          _formatDateTime(time),
+
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 5),
+
+              const Padding(
+                padding: EdgeInsets.only(
+                  top: 25,
+                ),
+                child: Icon(
+                  Icons.chevron_right,
+                  color: Colors.grey,
+                  size: 22,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // IMAGE PLACEHOLDER
+  // ============================================================
+
+  Widget _imagePlaceholder() {
+    return Container(
+      width: 75,
+      height: 75,
+
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C252E),
+        borderRadius: BorderRadius.circular(15),
+      ),
+
+      child: const Icon(
+        Icons.image_outlined,
+        color: Colors.grey,
+        size: 30,
+      ),
+    );
+  }
+
+  // ============================================================
+  // STATUS BADGE
+  // ============================================================
+
+  Widget _statusBadge(String status) {
+    Color color;
+
+    switch (status.toUpperCase()) {
+      case 'CRITICAL':
+        color = Colors.redAccent;
+        break;
+
+      case 'WARNING':
+        color = Colors.orangeAccent;
+        break;
+
+      case 'NORMAL':
+        color = accentColor;
+        break;
+
+      default:
+        color = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 5,
+      ),
+
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+
+        borderRadius: BorderRadius.circular(
+          20,
+        ),
+
+        border: Border.all(
+          color: color.withOpacity(0.18),
+        ),
+      ),
+
+      child: Text(
+        status.toUpperCase(),
+
+        style: TextStyle(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // EMPTY STATE
+  // ============================================================
+
+  Widget _emptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+
+        child: Column(
+          mainAxisAlignment:
+              MainAxisAlignment.center,
+
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              width: 95,
+              height: 95,
+
               decoration: BoxDecoration(
-                color: color.withOpacity(.12),
-                borderRadius: BorderRadius.circular(14),
+                color: accentColor.withOpacity(
+                  0.10,
+                ),
+
+                shape: BoxShape.circle,
+
+                border: Border.all(
+                  color: accentColor.withOpacity(
+                    0.15,
+                  ),
+                ),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 25,
+
+              child: const Icon(
+                Icons.notifications_none,
+                size: 48,
+                color: accentColor,
+              ),
+            ),
+
+            const SizedBox(height: 22),
+
+            const Text(
+              'No Alerts',
+
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
 
-            const SizedBox(width: 14),
+            const SizedBox(height: 8),
 
-            Expanded(
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+            const Text(
+              'No smoke, fire or safety alerts detected.',
+              textAlign: TextAlign.center,
 
-                  const SizedBox(height: 5),
-
-                  Text(
-                    description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    time,
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 13,
               ),
             ),
+
+            const SizedBox(height: 20),
 
             Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: 9,
-                vertical: 0,
+                horizontal: 14,
+                vertical: 9,
               ),
+
               decoration: BoxDecoration(
-                color: color.withOpacity(.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                status,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
+                color: accentColor.withOpacity(
+                  0.08,
                 ),
+
+                borderRadius:
+                    BorderRadius.circular(20),
+              ),
+
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+
+                children: [
+                  CircleAvatar(
+                    radius: 4,
+                    backgroundColor: accentColor,
+                  ),
+
+                  SizedBox(width: 7),
+
+                  Text(
+                    'System is stable',
+                    style: TextStyle(
+                      color: accentColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -214,644 +487,398 @@ class AlertScreen extends StatelessWidget {
     );
   }
 
-  void showAlertBottomSheet({
-    required String title,
-    required String description,
-    required String status,
-    required String time,
-    required Color color,
-    required IconData icon,
-    required String temperature,
-    required String humidity,
-    required String gas,
-    required String systemStatus,
-    required String imageUrl,
-  }) {
-    Get.bottomSheet(
-      AlertBottomSheet(
-        title: title,
-        description: description,
-        status: status,
-        time: time,
-        color: color,
-        icon: icon,
-        temperature: temperature,
-        humidity: humidity,
-        gas: gas,
-        systemStatus: systemStatus,
-        imageUrl: imageUrl,
-      ),
+  // ============================================================
+  // BOTTOM SHEET
+  // ============================================================
+
+  void _showAlertBottomSheet(
+    BuildContext context,
+    Map<String, dynamic> alert,
+  ) {
+    final imageUrl =
+        alert['imageUrl']?.toString() ?? '';
+
+    final time =
+        alert['time'] as DateTime?;
+
+    showModalBottomSheet(
+      context: context,
+
       isScrollControlled: true,
+
       backgroundColor: Colors.transparent,
+
+      builder: (_) {
+        return Container(
+          height:
+              MediaQuery.of(context).size.height *
+              0.82,
+
+          decoration: const BoxDecoration(
+            color: backgroundColor,
+
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(28),
+            ),
+          ),
+
+          child: Column(
+            children: [
+              // ==================================================
+              // HANDLE
+              // ==================================================
+
+              const SizedBox(height: 10),
+
+              Container(
+                width: 45,
+                height: 5,
+
+                decoration: BoxDecoration(
+                  color: Color(0xFF303943),
+
+                  borderRadius:
+                      BorderRadius.circular(10),
+                ),
+              ),
+
+              // ==================================================
+              // HEADER
+              // ==================================================
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  20,
+                  18,
+                  12,
+                  12,
+                ),
+
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        alert['title']
+                                ?.toString() ??
+                            'Alert',
+
+                        style: const TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+
+                    IconButton(
+                      onPressed: () {
+                        Get.back();
+                      },
+
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ==================================================
+              // CONTENT
+              // ==================================================
+
+              Expanded(
+                child: SingleChildScrollView(
+                  physics:
+                      const BouncingScrollPhysics(),
+
+                  padding:
+                      const EdgeInsets.fromLTRB(
+                    20,
+                    0,
+                    20,
+                    30,
+                  ),
+
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+
+                    children: [
+                      // ==========================================
+                      // IMAGE
+                      // ==========================================
+
+                      if (imageUrl.isNotEmpty)
+                        ClipRRect(
+                          borderRadius:
+                              BorderRadius.circular(
+                            18,
+                          ),
+
+                          child: Image.network(
+                            imageUrl,
+
+                            width: double.infinity,
+                            height: 220,
+
+                            fit: BoxFit.cover,
+
+                            errorBuilder:
+                                (
+                              context,
+                              error,
+                              stackTrace,
+                            ) {
+                              return _largeImagePlaceholder();
+                            },
+                          ),
+                        ),
+
+                      const SizedBox(height: 18),
+
+                      // ==========================================
+                      // DESCRIPTION
+                      // ==========================================
+
+                      Text(
+                        alert['description']
+                                ?.toString() ??
+                            'Safety event detected.',
+
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.grey,
+                          height: 1.5,
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      Row(
+                        children: [
+                          _statusBadge(
+                            alert['status']
+                                    ?.toString() ??
+                                'WARNING',
+                          ),
+
+                          const SizedBox(width: 10),
+
+                          const Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+
+                          const SizedBox(width: 5),
+
+                          Text(
+                            _formatDateTime(time),
+
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      const Text(
+                        'Sensor Data',
+
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+
+                      const SizedBox(height: 13),
+
+                      // ==========================================
+                      // SENSOR GRID
+                      // ==========================================
+
+                      GridView.count(
+                        crossAxisCount: 2,
+
+                        shrinkWrap: true,
+
+                        physics:
+                            const NeverScrollableScrollPhysics(),
+
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+
+                        childAspectRatio: 1.55,
+
+                        children: [
+                          _sensorCard(
+                            icon: Icons.thermostat,
+                            title: 'Temperature',
+                            value:
+                                '${alert['temperature']} °C',
+                          ),
+
+                          _sensorCard(
+                            icon: Icons.water_drop,
+                            title: 'Humidity',
+                            value:
+                                '${alert['humidity']} %',
+                          ),
+
+                          _sensorCard(
+                            icon: Icons.air,
+                            title: 'Gas',
+                            value:
+                                '${alert['gasValue']} ppm',
+                          ),
+
+                          _sensorCard(
+                            icon: Icons.sensors,
+                            title: 'DHT Status',
+                            value:
+                                '${alert['dht']}',
+                          ),
+
+                          _sensorCard(
+                            icon: Icons.memory,
+                            title: 'System',
+                            value:
+                                '${alert['systemStatus']}',
+                          ),
+
+                          _sensorCard(
+                            icon: Icons.timer,
+                            title: 'Uptime',
+                            value:
+                                '${alert['uptime']} sec',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
-}
 
+  // ============================================================
+  // SENSOR CARD
+  // ============================================================
 
-// ============================================================
-// BOTTOM SHEET
-// ============================================================
-
-class AlertBottomSheet extends StatelessWidget {
-  final String title;
-  final String description;
-  final String status;
-  final String time;
-  final Color color;
-  final IconData icon;
-
-  final String temperature;
-  final String humidity;
-  final String gas;
-  final String systemStatus;
-
-  final String imageUrl;
-
-  const AlertBottomSheet({
-    super.key,
-    required this.title,
-    required this.description,
-    required this.status,
-    required this.time,
-    required this.color,
-    required this.icon,
-    required this.temperature,
-    required this.humidity,
-    required this.gas,
-    required this.systemStatus,
-    required this.imageUrl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-
+  Widget _sensorCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
     return Container(
-      height: MediaQuery.of(context).size.height * .90,
+      padding: const EdgeInsets.all(13),
 
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F151C),
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(30),
+      decoration: BoxDecoration(
+        color: cardColor,
+
+        borderRadius: BorderRadius.circular(16),
+
+        border: Border.all(
+          color: Colors.white.withOpacity(0.05),
         ),
       ),
 
       child: Column(
-        children: [
-          // Drag handle
-          Container(
-            margin: const EdgeInsets.only(top: 10),
-            width: 45,
-            height: 5,
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-
-                  // ==================================================
-                  // HEADER
-                  // ==================================================
-
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(13),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(.12),
-                          borderRadius:
-                              BorderRadius.circular(15),
-                        ),
-                        child: Icon(
-                          icon,
-                          color: color,
-                          size: 28,
-                        ),
-                      ),
-
-                      const SizedBox(width: 14),
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 19,
-                                fontWeight:
-                                    FontWeight.bold,
-                              ),
-                            ),
-
-                            const SizedBox(height: 5),
-
-                            Text(
-                              time,
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // ==================================================
-                  // CURRENT TIME
-                  // ==================================================
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF151D25),
-                      borderRadius:
-                          BorderRadius.circular(17),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          color: Colors.cyanAccent,
-                        ),
-
-                        const SizedBox(width: 12),
-
-                        Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Current Time',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 11,
-                              ),
-                            ),
-
-                            const SizedBox(height: 3),
-
-                            Text(
-                              '${now.hour.toString().padLeft(2, '0')}:'
-                              '${now.minute.toString().padLeft(2, '0')}:'
-                              '${now.second.toString().padLeft(2, '0')}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight:
-                                    FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const Spacer(),
-
-                        const Text(
-                          'Asia/Karachi',
-                          style: TextStyle(
-                            color: Colors.cyanAccent,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // ==================================================
-                  // STATUS
-                  // ==================================================
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(.08),
-                      borderRadius:
-                          BorderRadius.circular(17),
-                      border: Border.all(
-                        color: color.withOpacity(.2),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.warning_amber_rounded,
-                          color: color,
-                        ),
-
-                        const SizedBox(width: 12),
-
-                        const Text(
-                          'Alert Status',
-                          style: TextStyle(
-                            color: Colors.white70,
-                          ),
-                        ),
-
-                        const Spacer(),
-
-                        Text(
-                          status,
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ==================================================
-                  // ALERT DESCRIPTION
-                  // ==================================================
-
-                  const Text(
-                    'Alert Details',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      color: Color(0xFF9EAFBC),
-                      height: 1.5,
-                      fontSize: 13,
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ==================================================
-                  // CURRENT SENSOR DATA
-                  // ==================================================
-
-                  const Text(
-                    'Current Sensor Data',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: sensorBox(
-                          Icons.thermostat,
-                          'Temperature',
-                          temperature,
-                          Colors.orangeAccent,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child: sensorBox(
-                          Icons.water_drop,
-                          'Humidity',
-                          humidity,
-                          Colors.lightBlueAccent,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: sensorBox(
-                          Icons.air,
-                          'Gas',
-                          gas,
-                          Colors.purpleAccent,
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child: sensorBox(
-                          Icons.memory,
-                          'System',
-                          systemStatus,
-                          color,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 22),
-
-                  // ==================================================
-                  // INTERNET IMAGE
-                  // ==================================================
-
-                  const Text(
-                    'Detection Evidence',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  GestureDetector(
-                    onTap: () {
-                      Get.to(
-                        () => FullScreenImage(
-                          imageUrl: imageUrl,
-                          title: title,
-                        ),
-                      );
-                    },
-
-                    child: Hero(
-                      tag: imageUrl,
-
-                      child: ClipRRect(
-                        borderRadius:
-                            BorderRadius.circular(20),
-
-                        child: Stack(
-                          children: [
-                            Image.network(
-                              imageUrl,
-                              width: double.infinity,
-                              height: 230,
-                              fit: BoxFit.cover,
-
-                              loadingBuilder:
-                                  (
-                                context,
-                                child,
-                                progress,
-                              ) {
-                                if (progress == null) {
-                                  return child;
-                                }
-
-                                return Container(
-                                  height: 230,
-                                  color:
-                                      const Color(
-                                    0xFF151D25,
-                                  ),
-                                  child: const Center(
-                                    child:
-                                        CircularProgressIndicator(
-                                      color:
-                                          Colors.cyanAccent,
-                                    ),
-                                  ),
-                                );
-                              },
-
-                              errorBuilder:
-                                  (
-                                context,
-                                error,
-                                stackTrace,
-                              ) {
-                                return Container(
-                                  height: 230,
-                                  color:
-                                      const Color(
-                                    0xFF151D25,
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons
-                                          .broken_image_outlined,
-                                      color:
-                                          Colors.white38,
-                                      size: 50,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-
-                            Positioned(
-                              right: 12,
-                              bottom: 12,
-                              child: Container(
-                                padding:
-                                    const EdgeInsets
-                                        .symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black
-                                      .withOpacity(.65),
-                                  borderRadius:
-                                      BorderRadius
-                                          .circular(20),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(
-                                      Icons
-                                          .fullscreen,
-                                      color:
-                                          Colors.white,
-                                      size: 16,
-                                    ),
-                                    SizedBox(width: 5),
-                                    Text(
-                                      'View Full',
-                                      style: TextStyle(
-                                        color:
-                                            Colors.white,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  // ==================================================
-                  // CLOSE
-                  // ==================================================
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () => Get.back(),
-
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: color,
-                        foregroundColor: Colors.black,
-                        elevation: 0,
-                        shape:
-                            RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(16),
-                        ),
-                      ),
-
-                      child: const Text(
-                        'Close',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget sensorBox(
-    IconData icon,
-    String title,
-    String value,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF151D25),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
         crossAxisAlignment:
             CrossAxisAlignment.start,
+
+        mainAxisAlignment:
+            MainAxisAlignment.center,
+
         children: [
           Icon(
             icon,
-            color: color,
             size: 22,
+            color: accentColor,
           ),
 
-          const SizedBox(height: 9),
+          const SizedBox(height: 7),
 
           Text(
             title,
+
             style: const TextStyle(
-              color: Colors.white54,
+              color: Colors.grey,
               fontSize: 11,
             ),
           ),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
 
           Text(
             value,
+
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+
             style: const TextStyle(
-              color: Colors.white,
               fontSize: 15,
               fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
         ],
       ),
     );
   }
-}
 
+  // ============================================================
+  // LARGE IMAGE PLACEHOLDER
+  // ============================================================
 
-// ============================================================
-// FULL SCREEN IMAGE
-// ============================================================
+  Widget _largeImagePlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 220,
 
-class FullScreenImage extends StatelessWidget {
-  final String imageUrl;
-  final String title;
+      decoration: BoxDecoration(
+        color: cardColor,
 
-  const FullScreenImage({
-    super.key,
-    required this.imageUrl,
-    required this.title,
-  });
+        borderRadius: BorderRadius.circular(18),
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-
-        leading: IconButton(
-          icon: const Icon(
-            Icons.close,
-            color: Colors.white,
-          ),
-          onPressed: () => Get.back(),
-        ),
-
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-          ),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.05),
         ),
       ),
 
-      body: Center(
-        child: InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 4,
-          child: Hero(
-            tag: imageUrl,
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
+      child: const Icon(
+        Icons.image_outlined,
+        size: 60,
+        color: Colors.grey,
       ),
     );
+  }
+
+  // ============================================================
+  // DATE FORMAT
+  // ============================================================
+
+  String _formatDateTime(DateTime? date) {
+    if (date == null) {
+      return 'Unknown time';
+    }
+
+    final d = date.toLocal();
+
+    String two(int n) =>
+        n.toString().padLeft(2, '0');
+
+    return '${d.day}/${d.month}/${d.year} '
+        '${two(d.hour)}:${two(d.minute)}';
   }
 }

@@ -2,12 +2,14 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:get/get.dart';
 
 class HomeController extends GetxController {
-  final DatabaseReference currentRef =
-      FirebaseDatabase.instance.ref('smokeSystem/current');
+  final DatabaseReference currentRef = FirebaseDatabase.instance.ref(
+    'smokeSystem/current',
+  );
 
-  final DatabaseReference historyRef =
-      FirebaseDatabase.instance.ref('smokeSystem/history');
-  final esp32  = ''.obs;
+  final DatabaseReference historyRef = FirebaseDatabase.instance.ref(
+    'smokeSystem/history',
+  );
+  final esp32 = ''.obs;
 
   // Current values
   final temperature = 0.0.obs;
@@ -38,7 +40,8 @@ class HomeController extends GetxController {
 
       if (data == null) return;
       final values = Map<String, dynamic>.from(data as Map);
-      temperature.value = double.tryParse(values['temperature'].toString()) ?? 0;
+      temperature.value =
+          double.tryParse(values['temperature'].toString()) ?? 0;
       humidity.value = double.tryParse(values['humidity'].toString()) ?? 0;
       gasValue.value = double.tryParse(values['gasValue'].toString()) ?? 0;
       status.value = values['status']?.toString() ?? 'UNKNOWN';
@@ -52,7 +55,9 @@ class HomeController extends GetxController {
   // ============================================================
 
   void listenToHistory() {
-    historyRef.orderByKey().limitToLast(24).onValue.listen((DatabaseEvent event) {
+    historyRef.orderByKey().limitToLast(24).onValue.listen((
+      DatabaseEvent event,
+    ) {
       final data = event.snapshot.value;
       if (data == null) {
         history.clear();

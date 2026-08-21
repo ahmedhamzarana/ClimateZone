@@ -1,6 +1,0 @@
-
-Supabase URL:
-https://flazkabermqyiwjrtxtx.supabase.co
-
-Publishable Key:
-sb_publishable_LXf1d2gomwqSnmDoEbg7bw_COoul7IX
