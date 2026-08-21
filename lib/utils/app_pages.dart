@@ -1,10 +1,8 @@
-import 'package:climatezone/bindings/emp_binding.dart';
 import 'package:climatezone/bindings/login_binding.dart';
 import 'package:climatezone/bindings/splash_binding.dart';
-import 'package:climatezone/screens/add_employee_screen.dart';
 import 'package:climatezone/screens/auth/login_screen.dart';
 import 'package:climatezone/screens/auth/splash_screen.dart';
-import 'package:climatezone/screens/employee_list_screen.dart';
+import 'package:climatezone/screens/chat_bot_screen.dart';
 import 'package:climatezone/screens/main_navigation_screen.dart';
 import 'package:climatezone/utils/alert_screen.dart';
 import 'package:climatezone/utils/app_routes.dart';
@@ -26,15 +24,7 @@ class AppPages {
       name: AppRoutes.home,
       page: () => MainNavigationScreen()
     ),
-    GetPage(
-      name: AppRoutes.addemployee,
-      page: () => const AddEmployeeScreen(),
-      binding: EmployeeBinding(),
-    ),
-    GetPage(
-      name: AppRoutes.employees, 
-      page: () => EmployeeListScreen()
-    ),
+    GetPage(name: AppRoutes.chat, page: () => ChatBotScreen(),),
     GetPage(
       name: AppRoutes.alerts, 
       page: () => AlertScreen()

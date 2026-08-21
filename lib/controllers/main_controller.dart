@@ -1,5 +1,5 @@
 import 'package:climatezone/screens/auth/profile_screen.dart';
-import 'package:climatezone/screens/employee_list_screen.dart';
+import 'package:climatezone/screens/chat_bot_screen.dart';
 import 'package:climatezone/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -14,9 +14,9 @@ class MainController extends GetxController {
   }
 
   final List<Widget> screens = [
-    const HomeScreen(),
-    const EmployeeListScreen(),
-    const ProfileScreen(),
+    HomeScreen(),
+    ChatBotScreen(),
+    ProfileScreen(),
   ];
 
 

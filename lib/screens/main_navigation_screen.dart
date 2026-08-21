@@ -33,8 +33,8 @@ class MainNavigationScreen extends StatelessWidget {
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_add_alt_1),
-              activeIcon: Icon(Icons.person_add_alt_1_outlined),
+              icon: Icon(Icons.message),
+              activeIcon: Icon(Icons.message_outlined),
               label: 'Employee',
             ),
             BottomNavigationBarItem(

@@ -3,7 +3,6 @@ import 'package:climatezone/utils/sensor_card.dart';
 import 'package:climatezone/utils/sensor_history_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
